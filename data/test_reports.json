@@ -1,0 +1,81 @@
+{
+  "reports": [
+    {
+      "id": "1783050726117",
+      "name": "测试报告_20260703_1152",
+      "totalCases": 1,
+      "successCases": 0,
+      "createdTime": "2026/7/3 11:52:05"
+    },
+    {
+      "id": "1783050386797",
+      "name": "测试报告_20260703_1146",
+      "totalCases": 1,
+      "successCases": 1,
+      "createdTime": "2026/7/3 11:46:26"
+    },
+    {
+      "id": "1783050319161",
+      "name": "测试报告_20260703_1145",
+      "totalCases": 1,
+      "successCases": 1,
+      "createdTime": "2026/7/3 11:45:18"
+    },
+    {
+      "id": "20260704_112024",
+      "date": "2026-07-04 11:20:24",
+      "total": 5,
+      "success": 0,
+      "error": 5,
+      "status": "completed"
+    },
+    {
+      "id": "20260704_112034",
+      "date": "2026-07-04 11:20:34",
+      "total": 5,
+      "success": 0,
+      "error": 5,
+      "status": "completed"
+    },
+    {
+      "id": "20260704_112147",
+      "date": "2026-07-04 11:21:47",
+      "total": 5,
+      "success": 5,
+      "error": 0,
+      "status": "completed"
+    },
+    {
+      "id": "20260704_112157",
+      "date": "2026-07-04 11:21:57",
+      "total": 5,
+      "success": 5,
+      "error": 0,
+      "status": "completed"
+    },
+    {
+      "id": "20260704_112356",
+      "date": "2026-07-04 11:23:56",
+      "total": 5,
+      "success": 5,
+      "error": 0,
+      "status": "completed"
+    },
+    {
+      "id": "20260704_113026",
+      "date": "2026-07-04 11:30:26",
+      "total": 5,
+      "success": 5,
+      "error": 0,
+      "status": "completed"
+    },
+    {
+      "id": "20260704_113047",
+      "date": "2026-07-04 11:30:47",
+      "total": 5,
+      "success": 5,
+      "error": 0,
+      "status": "completed"
+    }
+  ]
+}

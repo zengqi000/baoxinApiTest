@@ -1,0 +1,16 @@
+{
+  "modules": [
+    {
+      "id": "885c8eef",
+      "name": "采购流程",
+      "description": "",
+      "createdAt": "2026-07-03 10:26"
+    },
+    {
+      "id": "b7c0029b",
+      "name": "进销存",
+      "description": "",
+      "createdAt": "2026-07-04 17:36"
+    }
+  ]
+}

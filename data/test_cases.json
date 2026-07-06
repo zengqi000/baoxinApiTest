@@ -1,0 +1,123 @@
+{
+  "cases": [
+    {
+      "id": "2fed4edc",
+      "name": "采购合同列表，根据采购合同查询",
+      "description": "",
+      "moduleId": "885c8eef",
+      "moduleName": "",
+      "steps": [
+        {
+          "step": 1,
+          "apiId": "0cbbce36",
+          "apiName": "获取采购合同id信息",
+          "variables": {
+            "cgName": "zq-采购-0702-001"
+          },
+          "assertions": []
+        }
+      ],
+      "createdAt": "2026-07-04 16:11",
+      "updatedAt": "2026-07-04 16:39"
+    },
+    {
+      "id": "da5e441c",
+      "name": "进销存所有查询接口",
+      "description": "",
+      "moduleId": "b7c0029b",
+      "moduleName": "",
+      "steps": [
+        {
+          "step": 1,
+          "apiId": "3b0d6f85",
+          "apiName": "项目管理列表查询",
+          "variables": {},
+          "assertions": []
+        },
+        {
+          "step": 2,
+          "apiId": "a662be1c",
+          "apiName": "项目跟踪列表查询",
+          "variables": {},
+          "assertions": []
+        },
+        {
+          "step": 3,
+          "apiId": "e1ce4f65",
+          "apiName": "意向管理列表查询",
+          "variables": {},
+          "assertions": []
+        }
+      ],
+      "createdAt": "2026-07-04 17:37",
+      "updatedAt": "2026-07-04 17:37"
+    },
+    {
+      "id": "556f42a7",
+      "name": "测试212121",
+      "description": "",
+      "moduleId": "b7c0029b",
+      "moduleName": "",
+      "steps": [
+        {
+          "step": 1,
+          "apiId": "ccead9f4",
+          "apiName": "预算合同列表查询",
+          "variables": {},
+          "assertions": []
+        },
+        {
+          "step": 2,
+          "apiId": "142097cf",
+          "apiName": "采购成交业务检查列表查询",
+          "variables": {},
+          "assertions": []
+        },
+        {
+          "step": 3,
+          "apiId": "3a087ef6",
+          "apiName": "销售成交列表查询",
+          "variables": {},
+          "assertions": []
+        },
+        {
+          "step": 4,
+          "apiId": "2b9c6265",
+          "apiName": "采购成交列表查询",
+          "variables": {},
+          "assertions": []
+        },
+        {
+          "step": 5,
+          "apiId": "2bef5b7d",
+          "apiName": "意向报表列表查询",
+          "variables": {},
+          "assertions": []
+        },
+        {
+          "step": 6,
+          "apiId": "e1ce4f65",
+          "apiName": "意向管理列表查询",
+          "variables": {},
+          "assertions": []
+        },
+        {
+          "step": 7,
+          "apiId": "a662be1c",
+          "apiName": "项目跟踪列表查询",
+          "variables": {},
+          "assertions": []
+        },
+        {
+          "step": 8,
+          "apiId": "3b0d6f85",
+          "apiName": "项目管理列表查询",
+          "variables": {},
+          "assertions": []
+        }
+      ],
+      "createdAt": "2026-07-04 18:08",
+      "updatedAt": "2026-07-04 18:08"
+    }
+  ]
+}

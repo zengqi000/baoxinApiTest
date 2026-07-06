@@ -1,0 +1,25 @@
+{
+  "modules": [
+    {
+      "id": "f22fbe2c",
+      "name": "基础数据",
+      "description": "",
+      "createdAt": "2026-07-02 16:22",
+      "apiCount": 4
+    },
+    {
+      "id": "9602524a",
+      "name": "采购管理",
+      "description": "",
+      "createdAt": "2026-07-04 14:47",
+      "updatedAt": "2026-07-04 14:47"
+    },
+    {
+      "id": "57e7365a",
+      "name": "进销存查询接口",
+      "description": "",
+      "createdAt": "2026-07-04 17:22",
+      "updatedAt": "2026-07-04 17:22"
+    }
+  ]
+}

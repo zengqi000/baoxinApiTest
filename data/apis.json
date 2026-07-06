@@ -1,0 +1,886 @@
+{
+  "apis": [
+    {
+      "id": "8ebd0845",
+      "moduleId": "f22fbe2c",
+      "moduleName": "基础数据",
+      "name": "获取签约平台信息",
+      "funcName": "getPlatformInfoSign",
+      "url": "/scbs/service/MDAUBASE/queryUserOrgPage",
+      "method": "POST",
+      "headers": {},
+      "params": {},
+      "body": {
+        "__blocks__": {
+          "inqu_status": {
+            "attr": {},
+            "meta": {
+              "attr": {},
+              "columns": [
+                {
+                  "name": "search",
+                  "pos": 0,
+                  "type": "C"
+                }
+              ],
+              "desc": ""
+            },
+            "rows": [
+              [
+                "{{签约平台}}"
+              ]
+            ]
+          },
+          "result": {
+            "attr": {
+              "limit": 9999,
+              "offset": 0,
+              "showCount": true
+            },
+            "meta": {
+              "attr": {},
+              "columns": [],
+              "desc": ""
+            },
+            "rows": []
+          }
+        },
+        "__context__": {},
+        "__sys__": {
+          "descName": "",
+          "detailMsg": "",
+          "msg": "",
+          "msgKey": "",
+          "name": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__version__": "2.0",
+        "limit": 9999,
+        "offset": 0,
+        "param": {
+          "auth": "read",
+          "deptGroup": "",
+          "search": "{{签约平台}}",
+          "userCode": "cengqi@itg.net"
+        },
+        "showCount": true
+      },
+      "description": "获取签约平台信息",
+      "responseExample": "",
+      "assertions": [
+        {
+          "comparator": "eq",
+          "expected": "{{签约平台}}",
+          "field": "result.records[0].name"
+        }
+      ],
+      "responseMapping": [
+        {
+          "cacheKey": "orgName",
+          "comment": "签约平台名称",
+          "responsePath": "result.records[0].name"
+        },
+        {
+          "cacheKey": "orgCode",
+          "comment": "签约平台编码",
+          "responsePath": "result.records[0].code"
+        }
+      ],
+      "paramBinding": [],
+      "variables": "",
+      "createdAt": "2026-07-03 14:07",
+      "script": "",
+      "updatedAt": "2026-07-04 15:57"
+    },
+    {
+      "id": "670a91c5",
+      "moduleId": "f22fbe2c",
+      "moduleName": "基础数据",
+      "name": "获取业务员信息",
+      "funcName": "getStaffInfo",
+      "url": "/scbs/service/MDOG005/query",
+      "method": "POST",
+      "headers": {},
+      "params": {},
+      "body": {
+        "__blocks__": {},
+        "__context__": {},
+        "__sys__": {
+          "descName": "",
+          "detailMsg": "",
+          "msg": "",
+          "msgKey": "",
+          "name": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__version__": "2.0",
+        "limit": 50,
+        "offset": 0,
+        "param": {
+          "lcode": "100000_130001_302534",
+          "name": "{{业务员}}"
+        },
+        "showCount": true
+      },
+      "description": "",
+      "responseExample": "",
+      "assertions": [],
+      "responseMapping": [
+        {
+          "cacheKey": "ywName",
+          "comment": "业务员名字",
+          "responsePath": "result.records[0].ldapuname"
+        },
+        {
+          "cacheKey": "ywCode",
+          "comment": "业务员编码",
+          "responsePath": "result.records[0].ldapuno"
+        }
+      ],
+      "paramBinding": [],
+      "variables": "",
+      "createdAt": "2026-07-03 14:17"
+    },
+    {
+      "id": "0b3d4240",
+      "moduleId": "f22fbe2c",
+      "moduleName": "基础数据",
+      "name": "获取部组信息",
+      "funcName": "getInfo",
+      "url": "/scbs/service/MDAUBASE/queryUserDeptGroupPage",
+      "method": "POST",
+      "headers": {},
+      "params": {},
+      "body": {
+        "__blocks__": {
+          "inqu_status": {
+            "attr": {},
+            "meta": {
+              "attr": {},
+              "columns": [
+                {
+                  "name": "search",
+                  "pos": 0,
+                  "type": "C"
+                }
+              ],
+              "desc": ""
+            },
+            "rows": [
+              [
+                "{{部组}}"
+              ]
+            ]
+          },
+          "result": {
+            "attr": {
+              "limit": 9999,
+              "offset": 0,
+              "showCount": true
+            },
+            "meta": {
+              "attr": {},
+              "columns": [],
+              "desc": ""
+            },
+            "rows": []
+          }
+        },
+        "__context__": {},
+        "__sys__": {
+          "descName": "",
+          "detailMsg": "",
+          "msg": "",
+          "msgKey": "",
+          "name": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__version__": "2.0",
+        "limit": 9999,
+        "offset": 0,
+        "param": {
+          "auth": "read",
+          "deptCode": "",
+          "org": "",
+          "search": "{{部组}}",
+          "userCode": "cengqi@itg.net"
+        },
+        "showCount": true
+      },
+      "description": "",
+      "responseExample": "",
+      "assertions": [],
+      "responseMapping": [
+        {
+          "cacheKey": "bzName",
+          "comment": "部组名称",
+          "responsePath": "result.records[0].name"
+        },
+        {
+          "cacheKey": "bzmdmCode",
+          "comment": "",
+          "responsePath": "result.records[0].mdmCode"
+        },
+        {
+          "cacheKey": "bzdeptCode",
+          "comment": "",
+          "responsePath": "result.records[0].deptCode"
+        },
+        {
+          "cacheKey": "bzcode",
+          "comment": "",
+          "responsePath": "result.records[0].code"
+        }
+      ],
+      "paramBinding": [],
+      "variables": "",
+      "createdAt": "2026-07-03 14:27"
+    },
+    {
+      "id": "e4e9963d",
+      "moduleId": "f22fbe2c",
+      "moduleName": "基础数据",
+      "name": "获取供应商信息",
+      "funcName": "getSupplierInfo",
+      "url": "/scbs/service/MDUC002/queryMerListComponentPageRemote",
+      "method": "POST",
+      "headers": {},
+      "params": {},
+      "body": {
+        "param": {
+          "search": "{{供应商}}",
+          "customKey": "{{供应商}}",
+          "busRelation": "1"
+        },
+        "limit": 20,
+        "offset": 0,
+        "showCount": true,
+        "__version__": "2.0",
+        "__sys__": {
+          "name": "",
+          "descName": "",
+          "msg": "",
+          "msgKey": "",
+          "detailMsg": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__blocks__": {
+          "result": {
+            "attr": {
+              "limit": 20,
+              "offset": 0,
+              "showCount": true
+            },
+            "meta": {
+              "desc": "",
+              "attr": {},
+              "columns": []
+            },
+            "rows": []
+          },
+          "inqu_status": {
+            "attr": {},
+            "meta": {
+              "desc": "",
+              "attr": {},
+              "columns": [
+                {
+                  "pos": 0,
+                  "name": "search",
+                  "type": "C"
+                }
+              ]
+            },
+            "rows": [
+              [
+                "{{供应商}}"
+              ]
+            ]
+          }
+        },
+        "__context__": {}
+      },
+      "description": "",
+      "responseExample": "",
+      "assertions": [],
+      "responseMapping": [
+        {
+          "cacheKey": "gysName",
+          "comment": "供应商名称",
+          "responsePath": "result.records[0].name"
+        },
+        {
+          "cacheKey": "gysmdmCode",
+          "comment": "",
+          "responsePath": "result.records[0].mdmCode"
+        },
+        {
+          "cacheKey": "gyscode",
+          "comment": "",
+          "responsePath": "result.records[0].code"
+        }
+      ],
+      "paramBinding": [],
+      "variables": "",
+      "createdAt": "2026-07-03 14:34"
+    },
+    {
+      "id": "a6ce2412",
+      "moduleId": "f22fbe2c",
+      "moduleName": "基础数据",
+      "name": "获取产品组信息",
+      "funcName": "getProductInfo",
+      "url": "/scbs/service/MDWZ001/queryBrandClassForSelect",
+      "method": "POST",
+      "headers": {},
+      "params": {},
+      "body": {
+        "__blocks__": {},
+        "__context__": {},
+        "__sys__": {
+          "descName": "",
+          "detailMsg": "",
+          "msg": "",
+          "msgKey": "",
+          "name": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__version__": "2.0",
+        "param": {
+          "leafNo": "1",
+          "statusList": [
+            "40"
+          ]
+        }
+      },
+      "description": "",
+      "responseExample": "",
+      "assertions": [],
+      "responseMapping": [
+        {
+          "cacheKey": "cpzclassName",
+          "comment": "产品组信息",
+          "responsePath": "name"
+        },
+        {
+          "cacheKey": "cpzclassCode",
+          "comment": "",
+          "responsePath": "code"
+        }
+      ],
+      "paramBinding": [],
+      "variables": "",
+      "createdAt": "2026-07-03 14:36",
+      "script": "for item in response.get('data', []):\n    if item.get('className') == '{{产品组}}':\n        name=item.get('className')\n        code=item.get('classCode')"
+    },
+    {
+      "id": "0cbbce36",
+      "name": "获取采购合同id信息",
+      "funcName": "getContractPurchaseInfo",
+      "url": "/scbs/service/COCG004/query",
+      "method": "POST",
+      "moduleId": "9602524a",
+      "moduleName": "采购管理",
+      "headers": {},
+      "params": {},
+      "body": {
+        "__blocks__": {},
+        "__context__": {},
+        "__sys__": {
+          "descName": "",
+          "detailMsg": "",
+          "msg": "",
+          "msgKey": "",
+          "name": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__version__": "2.0",
+        "limit": 20,
+        "offset": 0,
+        "param": {
+          "purchaseContractOutNo": [
+            "{{cgName}}"
+          ],
+          "recCreator": [],
+          "signDateEnd": null,
+          "signDateStart": null,
+          "status": ""
+        },
+        "showCount": true
+      },
+      "responseMapping": [
+        {
+          "cacheKey": "No",
+          "comment": "采购合同编码",
+          "responsePath": "result.records[0].purchaseContractNo"
+        },
+        {
+          "cacheKey": "uuid",
+          "comment": "采购合同uuid",
+          "responsePath": "result.records[0].uuid"
+        }
+      ],
+      "paramBinding": [],
+      "assertions": [
+        {
+          "comparator": "eq",
+          "expected": "cgName",
+          "field": "result.records[0].purchaseContractOutNo"
+        }
+      ],
+      "script": "",
+      "createdAt": "2026-07-04 15:47",
+      "updatedAt": "2026-07-04 16:35",
+      "description": "采购合同列表页面，根据采购合同号查询接口",
+      "variables": "cgName"
+    },
+    {
+      "id": "3b0d6f85",
+      "name": "项目管理列表查询",
+      "funcName": "queryListQueryProject",
+      "url": "/scbs/service/COXM001/query",
+      "method": "POST",
+      "moduleId": "57e7365a",
+      "moduleName": "进销存查询接口",
+      "headers": {},
+      "params": {},
+      "body": {
+        "__blocks__": {},
+        "__context__": {},
+        "__sys__": {
+          "descName": "",
+          "detailMsg": "",
+          "msg": "",
+          "msgKey": "",
+          "name": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__version__": "2.0",
+        "limit": 20,
+        "offset": 0,
+        "param": {},
+        "showCount": true
+      },
+      "responseMapping": [],
+      "paramBinding": [],
+      "assertions": [
+        {
+          "comparator": "in",
+          "expected": "records",
+          "field": ""
+        }
+      ],
+      "script": "",
+      "variables": "",
+      "createdAt": "2026-07-04 17:23",
+      "updatedAt": "2026-07-04 17:26",
+      "description": ""
+    },
+    {
+      "id": "a662be1c",
+      "name": "项目跟踪列表查询",
+      "funcName": "queryListQueryProject2",
+      "url": "/scbs/service/COXM002/query",
+      "method": "POST",
+      "moduleId": "57e7365a",
+      "moduleName": "进销存查询接口",
+      "headers": {},
+      "params": {},
+      "body": {
+        "__blocks__": {},
+        "__context__": {},
+        "__sys__": {
+          "descName": "",
+          "detailMsg": "",
+          "msg": "",
+          "msgKey": "",
+          "name": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__version__": "2.0",
+        "limit": 20,
+        "offset": 0,
+        "param": {},
+        "showCount": true
+      },
+      "responseMapping": [],
+      "paramBinding": [],
+      "assertions": [
+        {
+          "comparator": "in",
+          "expected": "records",
+          "field": ""
+        },
+        {
+          "comparator": "in",
+          "expected": "statusName",
+          "field": ""
+        }
+      ],
+      "script": "",
+      "variables": "",
+      "createdAt": "2026-07-04 17:29",
+      "updatedAt": "2026-07-04 17:30",
+      "description": ""
+    },
+    {
+      "id": "e1ce4f65",
+      "name": "意向管理列表查询",
+      "funcName": "queryListQuery",
+      "url": "/scbs/service/COCJ001/query",
+      "method": "POST",
+      "moduleId": "57e7365a",
+      "moduleName": "进销存查询接口",
+      "headers": {},
+      "params": {},
+      "body": {
+        "__blocks__": {},
+        "__context__": {},
+        "__sys__": {
+          "descName": "",
+          "detailMsg": "",
+          "msg": "",
+          "msgKey": "",
+          "name": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__version__": "2.0",
+        "limit": 20,
+        "offset": 0,
+        "param": {
+          "intentionDateEnd": "{{signDateEnd}}",
+          "intentionDateStart": "{{signDateStart}}"
+        },
+        "showCount": true
+      },
+      "responseMapping": [],
+      "paramBinding": [],
+      "assertions": [
+        {
+          "comparator": "in",
+          "expected": "records",
+          "field": ""
+        }
+      ],
+      "script": "",
+      "variables": "",
+      "createdAt": "2026-07-04 17:32",
+      "updatedAt": "2026-07-04 17:34",
+      "description": ""
+    },
+    {
+      "id": "2bef5b7d",
+      "name": "意向报表列表查询",
+      "funcName": "queryListQuery2",
+      "url": "/scbs/service/COCJ006/query",
+      "method": "POST",
+      "moduleId": "57e7365a",
+      "moduleName": "进销存查询接口",
+      "headers": {},
+      "params": {},
+      "body": {
+        "param": {
+          "intentionDateStart": "{{signDateStart}}",
+          "intentionDateEnd": "{{signDateEnd}}",
+          "reportScope": [
+            "purchase",
+            "sale",
+            "retail"
+          ],
+          "exposureScopeList": [
+            "10",
+            "20"
+          ]
+        },
+        "limit": 20,
+        "offset": 0,
+        "showCount": true,
+        "__version__": "2.0",
+        "__sys__": {
+          "name": "",
+          "descName": "",
+          "msg": "",
+          "msgKey": "",
+          "detailMsg": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__blocks__": {},
+        "__context__": {}
+      },
+      "responseMapping": [],
+      "paramBinding": [],
+      "assertions": [
+        {
+          "comparator": "in",
+          "expected": "records",
+          "field": ""
+        }
+      ],
+      "script": "",
+      "variables": "",
+      "createdAt": "2026-07-04 17:49",
+      "updatedAt": "2026-07-04 17:49"
+    },
+    {
+      "id": "2b9c6265",
+      "name": "采购成交列表查询",
+      "funcName": "queryPurchaseListQuery",
+      "url": "/scbs/service/COCJ003/query",
+      "method": "POST",
+      "moduleId": "57e7365a",
+      "moduleName": "进销存查询接口",
+      "headers": {},
+      "params": {},
+      "body": {
+        "param": {
+          "transactionDateStart": "{{signDateStart}}",
+          "transactionDateEnd": "{{signDateEnd}}",
+          "providerCodeList": []
+        },
+        "limit": 20,
+        "offset": 0,
+        "showCount": true,
+        "__version__": "2.0",
+        "__sys__": {
+          "name": "",
+          "descName": "",
+          "msg": "",
+          "msgKey": "",
+          "detailMsg": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__blocks__": {},
+        "__context__": {}
+      },
+      "responseMapping": [],
+      "paramBinding": [],
+      "assertions": [
+        {
+          "comparator": "in",
+          "expected": "records",
+          "field": ""
+        }
+      ],
+      "script": "",
+      "variables": "",
+      "createdAt": "2026-07-04 18:02",
+      "updatedAt": "2026-07-04 18:02"
+    },
+    {
+      "id": "3a087ef6",
+      "name": "销售成交列表查询",
+      "funcName": "querySalesListQuery",
+      "url": "/scbs/service/COCJ002/query",
+      "method": "POST",
+      "moduleId": "57e7365a",
+      "moduleName": "进销存查询接口",
+      "headers": {},
+      "params": {},
+      "body": {
+        "param": {
+          "transactionDateStart": "{{signDateStart}}",
+          "transactionDateEnd": "{{signDateEnd}}",
+          "customerCodeList": [],
+          "statusList": []
+        },
+        "limit": 20,
+        "offset": 0,
+        "showCount": true,
+        "__version__": "2.0",
+        "__sys__": {
+          "name": "",
+          "descName": "",
+          "msg": "",
+          "msgKey": "",
+          "detailMsg": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__blocks__": {},
+        "__context__": {}
+      },
+      "responseMapping": [],
+      "paramBinding": [],
+      "assertions": [
+        {
+          "comparator": "in",
+          "expected": "records",
+          "field": ""
+        }
+      ],
+      "script": "",
+      "variables": "",
+      "createdAt": "2026-07-04 18:03",
+      "updatedAt": "2026-07-04 18:03"
+    },
+    {
+      "id": "142097cf",
+      "name": "采购成交业务检查列表查询",
+      "funcName": "queryPurchaseBusinessListQuery",
+      "url": "/scbs/service/COCJ007/query",
+      "method": "POST",
+      "moduleId": "57e7365a",
+      "moduleName": "进销存查询接口",
+      "headers": {},
+      "params": {},
+      "body": {
+        "param": {
+          "transactionDateStart": "{{signDateStart}}",
+          "transactionDateEnd": "{{signDateEnd}}",
+          "providerNameList": [],
+          "includeClosed": "N"
+        },
+        "limit": 20,
+        "offset": 0,
+        "showCount": true,
+        "__version__": "2.0",
+        "__sys__": {
+          "name": "",
+          "descName": "",
+          "msg": "",
+          "msgKey": "",
+          "detailMsg": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__blocks__": {},
+        "__context__": {}
+      },
+      "responseMapping": [],
+      "paramBinding": [],
+      "assertions": [
+        {
+          "comparator": "in",
+          "expected": "records",
+          "field": ""
+        }
+      ],
+      "script": "",
+      "variables": "",
+      "createdAt": "2026-07-04 18:04",
+      "updatedAt": "2026-07-04 18:04"
+    },
+    {
+      "id": "ccead9f4",
+      "name": "预算合同列表查询",
+      "funcName": "queryContractListQuery",
+      "url": "/scbs/service/COBC001/query",
+      "method": "POST",
+      "moduleId": "57e7365a",
+      "moduleName": "进销存查询接口",
+      "headers": {},
+      "params": {},
+      "body": {
+        "param": {
+          "creationDateStart": "{{signDateStart}}",
+          "creationDateEnd": "{{signDateEnd}}",
+          "budgetContractNo": [],
+          "budgetContractOutNo": [],
+          "recCreator": [
+            {
+              "code": "cengqi@itg.net",
+              "name": "曾琪"
+            }
+          ],
+          "status": [
+            "10",
+            "20",
+            "40"
+          ]
+        },
+        "limit": 20,
+        "offset": 0,
+        "showCount": true,
+        "__version__": "2.0",
+        "__sys__": {
+          "name": "",
+          "descName": "",
+          "msg": "",
+          "msgKey": "",
+          "detailMsg": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__blocks__": {},
+        "__context__": {}
+      },
+      "responseMapping": [],
+      "paramBinding": [],
+      "assertions": [
+        {
+          "comparator": "in",
+          "expected": "records",
+          "field": ""
+        }
+      ],
+      "script": "",
+      "variables": "",
+      "createdAt": "2026-07-04 18:05",
+      "updatedAt": "2026-07-04 18:05"
+    },
+    {
+      "id": "8fce6f7a",
+      "name": "预算合同报表查询",
+      "funcName": "queryContractQuery",
+      "url": "/scbs/service/COBC002/queryBudgetContractReportDetails",
+      "method": "POST",
+      "moduleId": "57e7365a",
+      "moduleName": "",
+      "headers": {},
+      "params": {},
+      "body": {
+        "param": {
+          "creationDate": [
+            "{{signDateStart}}",
+            "{{signDateEnd}}"
+          ],
+          "budgetContractNo": [],
+          "budgetContractOutNo": [],
+          "recCreator": [],
+          "creationDateStart": "{{signDateStart}}",
+          "creationDateEnd": "{{signDateEnd}}",
+          "status": []
+        },
+        "limit": 20,
+        "offset": 0,
+        "showCount": true,
+        "__version__": "2.0",
+        "__sys__": {
+          "name": "",
+          "descName": "",
+          "msg": "",
+          "msgKey": "",
+          "detailMsg": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__blocks__": {},
+        "__context__": {}
+      },
+      "responseMapping": [],
+      "paramBinding": [],
+      "assertions": [
+        {
+          "comparator": "in",
+          "expected": "records",
+          "field": ""
+        }
+      ],
+      "script": "",
+      "variables": "",
+      "createdAt": "2026-07-04 18:15",
+      "updatedAt": "2026-07-04 18:15"
+    }
+  ]
+}

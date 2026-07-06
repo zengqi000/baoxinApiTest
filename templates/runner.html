@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>测试执行 - 宝信 API 平台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --primary: #534AB7; --primary-light: #CECBF6; --primary-bg: #EEEDFE;
+  --success: #3B6D11; --success-light: #C0DD97; --success-bg: #EAF3DE;
+  --danger: #A32D2D; --danger-light: #F7C1C1; --danger-bg: #FCEBEB;
+  --warning: #BA7517; --warning-light: #FAC775; --warning-bg: #FAEEDA;
+  --gray-100: #F1EFE8; --gray-200: #D3D1C7; --gray-400: #888780; --gray-600: #5F5E5A; --gray-900: #2C2C2A;
+  --blue: #378ADD;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--gray-100); color: var(--gray-900); line-height: 1.5; }
+.sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; background: var(--gray-900); color: white; display: flex; flex-direction: column; z-index: 100; }
+.sidebar .logo { padding: 20px 16px; font-size: 18px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; }
+.sidebar .logo .icon { width: 28px; height: 28px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.sidebar nav { padding: 8px 0; }
+.sidebar nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; border-radius: 6px; margin: 2px 8px; transition: all .2s; }
+.sidebar nav a:hover { background: rgba(255,255,255,0.1); color: white; }
+.sidebar nav a.active { background: var(--primary); color: white; }
+.main { margin-left: 240px; padding: 24px 32px; min-height: 100vh; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.page-header h1 { font-size: 22px; font-weight: 600; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; transition: all .2s; font-family: inherit; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: #3C3489; }
+.btn-success { background: var(--success); color: white; }
+.btn-outline { background: transparent; border: 1px solid var(--gray-200); color: var(--gray-600); }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.card { background: white; border-radius: 12px; border: 1px solid var(--gray-200); padding: 16px; margin-bottom: 16px; }
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.card-title { font-size: 16px; font-weight: 600; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.tag-green { background: var(--success-bg); color: var(--success); }
+.tag-red { background: var(--danger-bg); color: var(--danger); }
+.tag-orange { background: var(--warning-bg); color: var(--warning); }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.form-group select, .form-group input { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; }
+.form-group select:focus, .form-group input:focus { border-color: var(--primary); }
+.result-panel { background: #1e1e2e; color: #cdd6f4; border-radius: 12px; padding: 16px; font-family: "SF Mono", monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; max-height: 500px; overflow-y: auto; }
+.running { animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.history-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; border: 1px solid var(--gray-200); margin-bottom: 8px; cursor: pointer; transition: all .2s; }
+.history-item:hover { border-color: var(--primary); background: var(--primary-bg); }
+.toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 300; transform: translateX(120%); transition: transform .3s; }
+.toast.show { transform: translateX(0); }
+.toast-success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-light); }
+.toast-error { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-light); }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo"><div class="icon">B</div><span>宝信 API 平台</span></div>
+  <nav>
+    <a href="/" id="nav-api"><div class="nav-icon" style="width:20px;text-align:center">🔌</div><span>接口管理</span></a>
+    <a href="/cases" id="nav-cases"><div class="nav-icon" style="width:20px;text-align:center">📋</div><span>用例管理</span></a>
+    <a href="/runner" class="active" id="nav-runner"><div class="nav-icon" style="width:20px;text-align:center">▶</div><span>测试执行</span></a>
+    <a href="/generator" id="nav-generator"><div class="nav-icon" style="width:20px;text-align:center">⚡</div><span>代码生成</span></a>
+  </nav>
+</div>
+
+<div class="main">
+  <div class="page-header">
+    <div><h1>测试执行</h1><div style="color:var(--gray-400);font-size:14px">运行测试用例并查看结果</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">选择测试模块</div>
+    </div>
+    <div class="form-group">
+      <label>测试模块</label>
+      <select id="test-module-select">
+        <option value="">基础数据初始化 (case_basic.py)</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-success" id="run-btn" onclick="runTests()">运行测试</button>
+      <button class="btn btn-outline" onclick="loadHistory()">查看历史结果</button>
+    </div>
+  </div>
+
+  <!-- 运行结果 -->
+  <div class="card" id="result-card" style="display:none">
+    <div class="card-header">
+      <div class="card-title">测试结果</div>
+      <div id="result-meta"></div>
+    </div>
+    <div id="result-status" style="margin-bottom:12px"></div>
+    <div id="result-output" class="result-panel"></div>
+  </div>
+
+  <!-- 历史结果 -->
+  <div class="card" id="history-card" style="display:none">
+    <div class="card-header">
+      <div class="card-title">历史测试结果</div>
+    </div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+async function init() {
+  const res = await fetch('/api/modules');
+  const data = await res.json();
+  const select = document.getElementById('test-module-select');
+  (data.modules || []).forEach(m => {
+    select.innerHTML += `<option value="${m.name}">${m.name} (test_${m.name}.py)</option>`;
+  });
+}
+
+async function runTests() {
+  const moduleName = document.getElementById('test-module-select').value;
+  const btn = document.getElementById('run-btn');
+  btn.textContent = '运行中...';
+  btn.classList.add('running');
+  
+  const res = await fetch('/api/run/test', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({moduleName: moduleName || ''})
+  });
+  const data = await res.json();
+  
+  btn.textContent = '运行测试';
+  btn.classList.remove('running');
+  
+  document.getElementById('result-card').style.display = 'block';
+  
+  if (data.success) {
+    const pass = data.exitCode === 0;
+    document.getElementById('result-status').innerHTML = `<span class="tag tag-${pass?'green':'red'}">${pass?'PASS':'FAIL'}</span> <span style="color:var(--gray-600)">运行时间: ${data.ranAt}</span>`;
+    document.getElementById('result-output').textContent = data.output;
+  } else {
+    document.getElementById('result-status').innerHTML = `<span class="tag tag-red">ERROR</span>`;
+    document.getElementById('result-output').textContent = data.msg;
+  }
+}
+
+async function loadHistory() {
+  const res = await fetch('/api/results');
+  const data = await res.json();
+  const results = data.results || [];
+  
+  document.getElementById('history-card').style.display = 'block';
+  
+  if (results.length === 0) {
+    document.getElementById('history-list').innerHTML = '<div style="text-align:center;padding:30px;color:var(--gray-400)">还没有历史测试结果</div>';
+    return;
+  }
+  
+  document.getElementById('history-list').innerHTML = results.reverse().map(r => `
+    <div class="history-item" onclick="showHistoryResult('${r.id}')">
+      <span class="tag tag-${r.exitCode===0?'green':'red'}">${r.exitCode===0?'PASS':'FAIL'}</span>
+      <span style="font-size:14px">${r.moduleName || '基础数据初始化'}</span>
+      <span style="color:var(--gray-400);font-size:13px">${r.ranAt}</span>
+    </div>
+  `).join('');
+}
+
+function showHistoryResult(id) {
+  const res = fetch('/api/results').then(r => r.json()).then(data => {
+    const result = (data.results || []).find(r => r.id === id);
+    if (result) {
+      document.getElementById('result-card').style.display = 'block';
+      document.getElementById('result-status').innerHTML = `<span class="tag tag-${result.exitCode===0?'green':'red'}">${result.exitCode===0?'PASS':'FAIL'}</span> <span style="color:var(--gray-600)">运行时间: ${result.ranAt}</span>`;
+      document.getElementById('result-output').textContent = result.output;
+    }
+  });
+}
+
+function showToast(msg, type='success') {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = `toast toast-${type} show`;
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "current": "pre",
+  "envs": {
+    "pre": {
+      "name": "预发布环境",
+      "host": "https://steel-uat.itg.com.cn",
+      "desc": "预发布环境 - 用于上线前验证"
+    }
+  }
+}

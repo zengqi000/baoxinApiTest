@@ -1,0 +1,104 @@
+{
+  "configs": [
+    {
+      "id": "dae19d69",
+      "name": "签约平台",
+      "value": "厦门国贸金属有限公司",
+      "referenced": true,
+      "createdAt": "2026-07-02 20:55",
+      "updatedAt": "2026-07-04 11:26"
+    },
+    {
+      "id": "44e127c9",
+      "name": "业务员",
+      "value": "闫宏飞",
+      "referenced": true,
+      "createdAt": "2026-07-02 20:56"
+    },
+    {
+      "id": "384d731c",
+      "name": "合同类型",
+      "value": "境内采购-内销",
+      "referenced": false,
+      "createdAt": "2026-07-03 10:29",
+      "updatedAt": "2026-07-04 11:26"
+    },
+    {
+      "id": "45505544",
+      "name": "贸易类型",
+      "value": "内贸",
+      "referenced": false,
+      "createdAt": "2026-07-03 10:29"
+    },
+    {
+      "id": "b43b3eed",
+      "name": "购销类型",
+      "value": "以销定采",
+      "referenced": false,
+      "createdAt": "2026-07-03 10:30"
+    },
+    {
+      "id": "94133acb",
+      "name": "部组",
+      "value": "旧金属运营部-西南",
+      "referenced": true,
+      "createdAt": "2026-07-03 10:30"
+    },
+    {
+      "id": "4b281296",
+      "name": "跟单员",
+      "value": "曾琪",
+      "referenced": false,
+      "createdAt": "2026-07-03 10:31"
+    },
+    {
+      "id": "7fcc5881",
+      "name": "供应商",
+      "value": "泉州三宝电子有限公司",
+      "referenced": true,
+      "createdAt": "2026-07-03 10:31"
+    },
+    {
+      "id": "72db7dd2",
+      "name": "产品组",
+      "value": "钢铁及制品",
+      "referenced": true,
+      "createdAt": "2026-07-03 10:31"
+    },
+    {
+      "id": "6e0a1018",
+      "name": "业务分类",
+      "value": "长协",
+      "referenced": false,
+      "createdAt": "2026-07-03 10:32"
+    },
+    {
+      "id": "b94a091f",
+      "name": "业务形式",
+      "value": "自营",
+      "referenced": false,
+      "createdAt": "2026-07-03 10:32"
+    },
+    {
+      "id": "3c294752",
+      "name": "签约标记",
+      "value": "合同签约",
+      "referenced": false,
+      "createdAt": "2026-07-03 10:32"
+    },
+    {
+      "id": "3d596ebe",
+      "name": "锁定业务",
+      "value": "否",
+      "referenced": false,
+      "createdAt": "2026-07-03 10:32"
+    },
+    {
+      "id": "d17f16b1",
+      "name": "溢短控制类型",
+      "value": "按合同",
+      "referenced": false,
+      "createdAt": "2026-07-03 10:33"
+    }
+  ]
+}

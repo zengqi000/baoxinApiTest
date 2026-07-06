@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宝信 API 测试管理平台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --primary: #534AB7; --primary-light: #CECBF6; --primary-bg: #EEEDFE;
+  --success: #3B6D11; --success-light: #C0DD97; --success-bg: #EAF3DE;
+  --danger: #A32D2D; --danger-light: #F7C1C1; --danger-bg: #FCEBEB;
+  --warning: #BA7517; --warning-light: #FAC775; --warning-bg: #FAEEDA;
+  --gray-100: #F1EFE8; --gray-200: #D3D1C7; --gray-400: #888780; --gray-600: #5F5E5A; --gray-900: #2C2C2A;
+  --blue: #378ADD; --blue-light: #B5D4F4; --blue-bg: #E6F1FB;
+  --teal: #0F6E56; --teal-light: #9FE1CB; --teal-bg: #E1F5EE;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; background: var(--gray-100); color: var(--gray-900); line-height: 1.5; }
+
+.sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; background: var(--gray-900); color: white; display: flex; flex-direction: column; z-index: 100; }
+.sidebar .logo { padding: 20px 16px; font-size: 18px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; }
+.sidebar .logo .icon { width: 28px; height: 28px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.sidebar nav { padding: 8px 0; }
+.sidebar nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; border-radius: 6px; margin: 2px 8px; transition: all .2s; }
+.sidebar nav a:hover { background: rgba(255,255,255,0.1); color: white; }
+.sidebar nav a.active { background: var(--primary); color: white; }
+.sidebar nav a .nav-icon { width: 20px; text-align: center; font-size: 15px; }
+
+.main { margin-left: 240px; padding: 24px 32px; min-height: 100vh; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.page-header h1 { font-size: 22px; font-weight: 600; }
+.page-header .subtitle { color: var(--gray-400); font-size: 14px; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; transition: all .2s; font-family: inherit; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: #3C3489; }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #27500A; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { background: #791F1F; }
+.btn-outline { background: transparent; border: 1px solid var(--gray-200); color: var(--gray-600); }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 4px 10px; font-size: 13px; }
+
+.card { background: white; border-radius: 12px; border: 1px solid var(--gray-200); padding: 16px; margin-bottom: 16px; }
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.card-title { font-size: 16px; font-weight: 600; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: white; border-radius: 12px; border: 1px solid var(--gray-200); padding: 20px; }
+.stat-card .label { color: var(--gray-400); font-size: 13px; margin-bottom: 4px; }
+.stat-card .value { font-size: 28px; font-weight: 600; }
+.stat-card .value.purple { color: var(--primary); }
+.stat-card .value.green { color: var(--success); }
+.stat-card .value.blue { color: var(--blue); }
+.stat-card .value.orange { color: var(--warning); }
+
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.tag-purple { background: var(--primary-bg); color: var(--primary); }
+.tag-green { background: var(--success-bg); color: var(--success); }
+.tag-blue { background: var(--blue-bg); color: var(--blue); }
+.tag-red { background: var(--danger-bg); color: var(--danger); }
+.tag-orange { background: var(--warning-bg); color: var(--warning); }
+.tag-teal { background: var(--teal-bg); color: var(--teal); }
+
+.table { width: 100%; border-collapse: collapse; }
+.table th { text-align: left; padding: 10px 12px; font-size: 13px; color: var(--gray-400); border-bottom: 1px solid var(--gray-200); font-weight: 500; }
+.table td { padding: 10px 12px; font-size: 14px; border-bottom: 1px solid var(--gray-100); }
+.table tr:hover td { background: var(--gray-100); }
+.table .actions { display: flex; gap: 6px; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 200; }
+.modal-overlay.show { display: flex; }
+.modal { background: white; border-radius: 16px; width: 800px; max-height: 85vh; overflow-y: auto; padding: 24px; position: relative; }
+.modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+.modal .close-btn { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--gray-400); }
+
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: var(--gray-600); }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; font-family: inherit; outline: none; transition: border .2s; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); }
+.form-group textarea { min-height: 80px; resize: vertical; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group .hint { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: var(--gray-400); }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state .title { font-size: 16px; margin-bottom: 6px; color: var(--gray-600); }
+.empty-state .desc { font-size: 14px; }
+
+.result-panel { background: #1e1e2e; color: #cdd6f4; border-radius: 12px; padding: 16px; font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow-y: auto; }
+
+.search-bar { display: flex; gap: 8px; align-items: center; }
+.search-bar input { padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; width: 260px; }
+.search-bar input:focus { border-color: var(--primary); outline: none; }
+
+@media (max-width: 768px) {
+  .sidebar { width: 60px; }
+  .sidebar nav a span { display: none; }
+  .sidebar .logo span { display: none; }
+  .main { margin-left: 60px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .form-row { grid-template-columns: 1fr; }
+}
+
+.toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 300; transform: translateX(120%); transition: transform .3s; }
+.toast.show { transform: translateX(0); }
+.toast-success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-light); }
+.toast-error { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-light); }
+
+.section-divider { border-top: 1px solid var(--gray-200); padding-top: 16px; margin-top: 16px; }
+.section-divider .section-title { font-size: 15px; font-weight: 600; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+.step-card { background: var(--gray-100); border-radius: 10px; padding: 16px; margin-bottom: 12px; border: 2px solid var(--gray-200); }
+.step-card.active { border-color: var(--primary); background: var(--primary-bg); }
+.step-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.step-number { width: 28px; height: 28px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; }
+.step-card.active .step-number { background: var(--primary); }
+.step-remove { padding: 4px 8px; background: transparent; border: 1px solid var(--gray-300); border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--danger); }
+.step-remove:hover { background: var(--danger-bg); }
+
+.variable-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.variable-row input { flex: 1; }
+
+.api-select-wrapper { position: relative; }
+.api-select-wrapper select { appearance: none; padding-right: 32px; }
+.api-select-wrapper::after { content: '▼'; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--gray-400); font-size: 12px; }
+
+.custom-select { position: relative; width: 100%; }
+.custom-select-input { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; background: white; cursor: pointer; transition: border .2s; }
+.custom-select-input:focus { border-color: var(--primary); }
+.custom-select-input::placeholder { color: var(--gray-400); }
+.custom-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background: white; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 240px; overflow-y: auto; z-index: 100; display: none; }
+.custom-select-dropdown.show { display: block; }
+.custom-select-option { padding: 8px 12px; cursor: pointer; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+.custom-select-option:hover { background: var(--primary-bg); }
+.custom-select-option.selected { background: var(--primary-bg); color: var(--primary); font-weight: 500; }
+.custom-select-option .module-tag { font-size: 11px; color: var(--gray-400); background: var(--gray-100); padding: 1px 6px; border-radius: 4px; }
+.custom-select-empty { padding: 16px; text-align: center; color: var(--gray-400); font-size: 13px; }
+
+.module-filter { display: flex; gap: 6px; flex-wrap: wrap; }
+.module-filter .filter-item { padding: 4px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; border: 1px solid var(--gray-200); color: var(--gray-600); transition: all .2s; }
+.module-filter .filter-item:hover { border-color: var(--primary); color: var(--primary); }
+.module-filter .filter-item.active { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
+
+.api-checkbox-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background .2s; }
+.api-checkbox-row:hover { background: var(--primary-bg); }
+.api-checkbox-row:last-child { border-bottom: none; }
+.api-checkbox-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; flex: none; }
+.api-checkbox-row .api-name { flex: 1; font-size: 14px; color: var(--gray-900); }
+.api-checkbox-row .api-method { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+.api-checkbox-row .api-method.get { background: var(--blue-bg); color: var(--blue); }
+.api-checkbox-row .api-method.post { background: var(--success-bg); color: var(--success); }
+.api-checkbox-row .api-method.put { background: var(--warning-bg); color: var(--warning); }
+.api-checkbox-row .api-method.delete { background: var(--danger-bg); color: var(--danger); }
+.api-checkbox-row .api-url { font-size: 12px; color: var(--gray-400); font-family: monospace; }
+.api-checkbox-row.selected { background: var(--primary-bg); }
+.api-checkbox-row.select-all-row { background: var(--gray-50); border-bottom: 2px solid var(--gray-200); position: sticky; top: 0; z-index: 1; }
+.api-checkbox-row.select-all-row:hover { background: var(--primary-bg); }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo"><div class="icon">B</div><span>宝信 API 平台</span></div>
+  <nav>
+    <a href="/"><div class="nav-icon">🔌</div><span>接口管理</span></a>
+    <a href="/cases" class="active"><div class="nav-icon">📋</div><span>用例管理</span></a>
+    <a href="/runner"><div class="nav-icon">▶</div><span>测试执行</span></a>
+    <a href="/generator"><div class="nav-icon">⚡</div><span>代码生成</span></a>
+  </nav>
+</div>
+
+<div class="main">
+  <div class="stats">
+    <div class="stat-card"><div class="label">用例总数</div><div class="value purple" id="stat-cases">0</div></div>
+    <div class="stat-card"><div class="label">接口总数</div><div class="value blue" id="stat-apis">0</div></div>
+    <div class="stat-card"><div class="label">缓存字段</div><div class="value green" id="stat-cache">0</div></div>
+    <div class="stat-card" style="cursor:pointer" onclick="showReportList()"><div class="label">最近运行</div><div class="value orange" id="stat-last-run" style="text-decoration:underline">-</div></div>
+  </div>
+
+  <div class="page-header">
+    <div><h1>用例管理</h1><div class="subtitle">管理测试用例，支持多步骤接口调用</div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-success" onclick="runSelectedCases()">▶ 一键执行</button>
+      <button class="btn btn-primary" onclick="showAddCaseModal()">+ 新增用例</button>
+      <button class="btn btn-outline" onclick="showAddModuleModal()">+ 新增模块</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">用例模块</div>
+    </div>
+    <div class="module-filter" id="case-module-filter">
+      <div class="filter-item active" onclick="filterCasesByModule('')">全部</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">用例列表</div>
+      <div class="search-bar">
+        <input id="case-search" placeholder="搜索用例名称..." oninput="filterCases()">
+      </div>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:40px"><input type="checkbox" onchange="toggleSelectAll(this)">全选</th>
+          <th>用例名称</th>
+          <th>所属模块</th>
+          <th>步骤数</th>
+          <th>描述</th>
+          <th>创建时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="case-list">
+        <tr><td colspan="7">
+          <div class="empty-state">
+            <div class="icon">📋</div>
+            <div class="title">还没有测试用例</div>
+            <div class="desc">点击"新增用例"按钮创建你的第一个测试用例</div>
+          </div>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal-overlay" id="case-modal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal('case-modal')">x</button>
+    <h2 id="case-modal-title">新增用例</h2>
+    
+    <div class="form-group">
+      <label>用例名称</label>
+      <input id="case-name" placeholder="输入用例名称">
+    </div>
+    
+    <div class="form-group">
+      <label>所属模块</label>
+      <div class="api-select-wrapper">
+        <select id="case-module">
+          <option value="">请选择模块</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label>用例描述</label>
+      <textarea id="case-desc" placeholder="描述该用例的测试场景..." rows="2"></textarea>
+    </div>
+
+    <div class="section-divider">
+      <div class="section-title">测试步骤</div>
+      <div id="steps-container">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-outline btn-sm" onclick="addStep()">+ 添加单步</button>
+        <button class="btn btn-primary btn-sm" onclick="showBatchAddModal()">+ 批量添加接口</button>
+      </div>
+    </div>
+    
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal('case-modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveCase()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="batch-add-modal">
+  <div class="modal" style="width:720px">
+    <button class="close-btn" onclick="closeModal('batch-add-modal')">x</button>
+    <h2>批量添加接口</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>业务模块</label>
+        <div class="api-select-wrapper">
+          <select id="batch-module-select" onchange="onBatchModuleChange()">
+            <option value="">请选择业务模块</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>接口列表 <span style="font-weight:400;color:var(--gray-400);font-size:12px">（按勾选顺序添加为步骤）</span></label>
+      <div id="batch-api-list" style="border:1px solid var(--gray-200);border-radius:8px;max-height:320px;overflow-y:auto;">
+        <div style="padding:40px;text-align:center;color:var(--gray-400)">请先选择业务模块</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+      <div style="font-size:13px;color:var(--gray-400)">已选择 <span id="batch-selected-count" style="color:var(--primary);font-weight:600">0</span> 个接口</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="closeModal('batch-add-modal')">取消</button>
+        <button class="btn btn-primary" onclick="confirmBatchAdd()">添加选中</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="case-module-modal">
+  <div class="modal" style="width:520px">
+    <button class="close-btn" onclick="closeModal('case-module-modal')">x</button>
+    <h2 id="case-module-modal-title">新增用例模块</h2>
+    <div class="form-group">
+      <label>模块名称</label>
+      <input type="text" id="case-module-name" placeholder="如：采购流程、销售流程...">
+    </div>
+    <div class="form-group">
+      <label>模块描述</label>
+      <textarea id="case-module-desc" placeholder="描述该模块包含的用例..." rows="3"></textarea>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal('case-module-modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveCaseModule()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="test-result-modal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal('test-result-modal')">x</button>
+    <h2>用例执行结果</h2>
+    <div id="test-result-content" style="margin-bottom:16px"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="report-list-modal">
+  <div class="modal" style="width:900px">
+    <button class="close-btn" onclick="closeModal('report-list-modal')">x</button>
+    <h2>测试报告列表</h2>
+    <div id="report-list-content" style="margin-bottom:16px"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="report-preview-modal">
+  <div class="modal" style="width:900px">
+    <button class="close-btn" onclick="closeModal('report-preview-modal')">x</button>
+    <h2 id="report-preview-title">报告预览</h2>
+    <div id="report-preview-content" style="margin-bottom:16px;max-height:500px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<script>
+let editingCaseId = null;
+let casesData = [];
+let apis = [];
+let steps = [];
+let caseModules = [];
+let apiModules = [];
+let currentModuleFilter = '';
+let openDropdown = null;
+let batchSelectedApis = [];
+
+async function init() {
+  await loadApis();
+  await loadApiModules();
+  await loadCaseModules();
+  await loadCases();
+  setupGlobalClickHandler();
+}
+
+async function loadApiModules() {
+  const res = await fetch('/api/modules');
+  const data = await res.json();
+  apiModules = data.modules || [];
+  
+  const select = document.getElementById('batch-module-select');
+  let html = '<option value="">请选择业务模块</option>';
+  apiModules.forEach(m => {
+    html += '<option value="' + m.id + '">' + m.name + '</option>';
+  });
+  select.innerHTML = html;
+}
+
+function setupGlobalClickHandler() {
+  document.addEventListener('click', () => {
+    if (openDropdown) {
+      openDropdown.classList.remove('show');
+      openDropdown = null;
+    }
+  });
+}
+
+function initCustomSelect(containerId, selectedId, onChangeCallback) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  const input = container.querySelector('.custom-select-input');
+  const dropdown = container.querySelector('.custom-select-dropdown');
+  
+  function filterOptions() {
+    const keyword = input.value.toLowerCase().trim();
+    const options = dropdown.querySelectorAll('.custom-select-option');
+    let hasVisible = false;
+    
+    options.forEach(opt => {
+      const text = opt.dataset.text.toLowerCase();
+      if (keyword === '' || text.includes(keyword)) {
+        opt.style.display = '';
+        hasVisible = true;
+      } else {
+        opt.style.display = 'none';
+      }
+    });
+    
+    if (!hasVisible && keyword !== '') {
+      dropdown.innerHTML = '<div class="custom-select-empty">没有找到匹配的接口</div>';
+    }
+  }
+  
+  function showDropdown() {
+    if (openDropdown && openDropdown !== dropdown) {
+      openDropdown.classList.remove('show');
+    }
+    dropdown.classList.add('show');
+    openDropdown = dropdown;
+    filterOptions();
+  }
+  
+  function hideDropdown() {
+    dropdown.classList.remove('show');
+    if (openDropdown === dropdown) {
+      openDropdown = null;
+    }
+  }
+  
+  input.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showDropdown();
+  });
+  
+  input.addEventListener('input', () => {
+    const selectedApi = apis.find(a => a.id === input.dataset.selectedId);
+    const selectedName = selectedApi ? selectedApi.name : '';
+    if (input.value !== selectedName) {
+      input.dataset.selectedId = '';
+    }
+    showDropdown();
+    filterOptions();
+  });
+  
+  dropdown.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const option = e.target.closest('.custom-select-option');
+    if (option) {
+      const apiId = option.dataset.value;
+      const api = apis.find(a => a.id === apiId);
+      const apiName = api ? api.name : '';
+      input.value = apiName;
+      input.dataset.selectedId = apiId;
+      
+      dropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+        opt.classList.remove('selected');
+      });
+      option.classList.add('selected');
+      
+      hideDropdown();
+      
+      if (onChangeCallback) {
+        onChangeCallback(apiId, apiName);
+      }
+    }
+  });
+}
+
+function renderCustomSelectOptions(containerId, selectedId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  const dropdown = container.querySelector('.custom-select-dropdown');
+  const input = container.querySelector('.custom-select-input');
+  
+  const selectedApi = apis.find(a => a.id === selectedId);
+  input.value = selectedApi ? selectedApi.name : '';
+  input.dataset.selectedId = selectedId || '';
+  
+  let html = '';
+  apis.forEach(api => {
+    const moduleName = api.moduleName || '';
+    const isSelected = api.id === selectedId;
+    html += `
+      <div class="custom-select-option ${isSelected ? 'selected' : ''}" data-value="${api.id}" data-text="${api.name}${moduleName ? ' ' + moduleName : ''}">
+        <span>${api.name}</span>
+        ${moduleName ? `<span class="module-tag">${moduleName}</span>` : ''}
+      </div>
+    `;
+  });
+  
+  if (apis.length === 0) {
+    html = '<div class="custom-select-empty">暂无接口数据</div>';
+  }
+  
+  dropdown.innerHTML = html;
+}
+
+async function loadApis() {
+  const res = await fetch('/api/apis');
+  const data = await res.json();
+  apis = data.apis || [];
+}
+
+async function loadCaseModules() {
+  const res = await fetch('/api/case-modules');
+  const data = await res.json();
+  caseModules = data.modules || [];
+  
+  const filter = document.getElementById('case-module-filter');
+  let html = '<div class="filter-item active" onclick="filterCasesByModule(\'\')">全部</div>';
+  caseModules.forEach(m => {
+    html += `<div class="filter-item" onclick="filterCasesByModule('${m.id}')">${m.name}</div>`;
+  });
+  filter.innerHTML = html;
+  
+  const select = document.getElementById('case-module');
+  let selectHtml = '<option value="">请选择模块</option>';
+  caseModules.forEach(m => {
+    selectHtml += `<option value="${m.id}">${m.name}</option>`;
+  });
+  select.innerHTML = selectHtml;
+}
+
+async function loadCases() {
+  const res = await fetch('/api/cases');
+  const data = await res.json();
+  casesData = data.cases || [];
+  
+  document.getElementById('stat-cases').textContent = casesData.length;
+  await updateRunCount();
+  
+  const apiRes = await fetch('/api/apis');
+  const apiData = await apiRes.json();
+  document.getElementById('stat-apis').textContent = (apiData.apis || []).length;
+  
+  const cacheRes = await fetch('/api/data-cache');
+  const cacheData = await cacheRes.json();
+  const cacheDataResult = cacheData.data || cacheData;
+  const cacheFields = Object.keys(cacheDataResult || {}).filter(k => !k.startsWith('_') && !k.endsWith('_comment'));
+  document.getElementById('stat-cache').textContent = cacheFields.length;
+  
+  if (casesData.length === 0) {
+    document.getElementById('case-list').innerHTML = `
+      <tr><td colspan="7">
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <div class="title">还没有测试用例</div>
+          <div class="desc">点击"新增用例"按钮创建你的第一个测试用例</div>
+        </div>
+      </td></tr>
+    `;
+    return;
+  }
+  
+  document.getElementById('case-list').innerHTML = casesData.map(c => {
+    const stepCount = c.steps ? c.steps.length : 1;
+    const module = caseModules.find(m => m.id === c.moduleId);
+    return `
+    <tr>
+      <td><input type="checkbox" class="case-checkbox" value="${c.id}"></td>
+      <td style="font-weight:500">${c.name}</td>
+      <td>${module ? `<span class="tag tag-purple">${module.name}</span>` : '-'}</td>
+      <td><span class="tag tag-blue">${stepCount} 步</span></td>
+      <td>${c.description || '-'}</td>
+      <td>${c.createdAt || '-'}</td>
+      <td class="actions">
+        <button class="btn btn-outline btn-sm" onclick="editCase('${c.id}')">编辑</button>
+        <button class="btn btn-primary btn-sm" onclick="runCase('${c.id}')">执行</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCase('${c.id}')">删除</button>
+      </td>
+    </tr>
+  `}).join('');
+}
+
+function showAddCaseModal() {
+  editingCaseId = null;
+  document.getElementById('case-modal-title').textContent = '新增用例';
+  document.getElementById('case-name').value = '';
+  document.getElementById('case-module').value = '';
+  document.getElementById('case-desc').value = '';
+  
+  steps = [{apiId: '', apiName: '', variables: [], assertions: []}];
+  renderSteps();
+  
+  showModal('case-modal', false);
+}
+
+async function editCase(id) {
+  const c = casesData.find(item => item.id === id);
+  if (!c) return;
+  
+  editingCaseId = id;
+  document.getElementById('case-modal-title').textContent = '编辑用例';
+  document.getElementById('case-name').value = c.name || '';
+  document.getElementById('case-module').value = c.moduleId || '';
+  document.getElementById('case-desc').value = c.description || '';
+  
+  if (c.steps) {
+    steps = c.steps.map(s => ({...s, variables: Object.entries(s.variables || {}).map(([name, value]) => ({name, value})), assertions: s.assertions || []}));
+  } else {
+    steps = [{apiId: c.apiId || '', apiName: c.apiName || '', variables: Object.entries(c.variables || {}).map(([name, value]) => ({name, value})), assertions: []}];
+  }
+  
+  for (const step of steps) {
+    if (step.apiId) {
+      const apiRes = await fetch(`/api/apis/${step.apiId}`);
+      const apiData = await apiRes.json();
+      const apiInfo = apiData.api || apiData;
+      
+      if (apiInfo.variables) {
+        const varsStr = apiInfo.variables.replace(/[()（）]/g, '');
+        const varList = varsStr.split(/[,，]/).map(v => v.trim()).filter(v => v);
+        
+        const existingVars = step.variables || [];
+        const existingMap = {};
+        existingVars.forEach(v => { existingMap[v.name] = v.value; });
+        
+        step.variables = varList.map(v => ({name: v, value: existingMap[v] || ''}));
+      }
+    }
+  }
+  
+  renderSteps();
+  showModal('case-modal', false);
+}
+
+function renderSteps() {
+  const container = document.getElementById('steps-container');
+  container.innerHTML = '';
+  
+  steps.forEach((step, index) => {
+    const stepCard = document.createElement('div');
+    stepCard.className = 'step-card';
+    stepCard.dataset.step = index + 1;
+    
+    stepCard.innerHTML = `
+      <div class="step-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="step-number">${index + 1}</div>
+          <span style="font-weight:600;font-size:14px">第${['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'][index] || (index + 1)}步</span>
+        </div>
+        <button class="step-remove" onclick="removeStep(${index})" ${steps.length <= 1 ? 'style="display:none"' : ''}>删除</button>
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>选择接口</label>
+        <div class="custom-select" id="step-api-container-${index}">
+          <input type="text" class="custom-select-input" id="step-api-input-${index}" placeholder="请选择或搜索接口">
+          <div class="custom-select-dropdown" id="step-api-dropdown-${index}"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>变量参数</label>
+        <div id="step-variables-${index}">${renderStepVariables(index, step.variables)}</div>
+        <button class="btn btn-outline btn-sm" onclick="addStepVariable(${index})">+ 添加变量</button>
+      </div>
+      <div class="form-group">
+        <label>断言配置</label>
+        <div id="step-assertions-${index}">${renderStepAssertions(index, step.assertions)}</div>
+        <button class="btn btn-outline btn-sm" onclick="addStepAssertion(${index})">+ 添加断言</button>
+      </div>
+    `;
+    
+    container.appendChild(stepCard);
+  });
+  
+  steps.forEach((step, index) => {
+    renderCustomSelectOptions(`step-api-container-${index}`, step.apiId);
+    initCustomSelect(`step-api-container-${index}`, step.apiId, (apiId, apiName) => {
+      onStepApiChange(index, apiId);
+    });
+  });
+}
+
+function renderStepVariables(stepIndex, variables) {
+  if (!variables || variables.length === 0) {
+    return '<div style="color:var(--gray-400);font-size:13px;margin-bottom:8px">选择接口后会自动填充变量，或手动添加</div>';
+  }
+  return variables.map((v, i) => `
+    <div class="variable-row">
+      <input value="${v.name}" onchange="steps[${stepIndex}].variables[${i}].name=this.value" placeholder="变量名">
+      <input value="${v.value}" onchange="steps[${stepIndex}].variables[${i}].value=this.value" placeholder="变量值">
+      <button class="btn btn-outline btn-sm" onclick="removeStepVariable(${stepIndex}, ${i})" style="color:var(--danger)">x</button>
+    </div>
+  `).join('');
+}
+
+function renderStepAssertions(stepIndex, assertions) {
+  if (!assertions || assertions.length === 0) {
+    return '<div style="color:var(--gray-400);font-size:13px;margin-bottom:8px">添加断言，验证接口返回值是否符合预期。响应路径支持: data.name 或 res["name"]</div>';
+  }
+  return assertions.map((a, i) => `
+    <div class="variable-row" style="align-items:center;gap:6px">
+      <input value="${a.responsePath}" oninput="steps[${stepIndex}].assertions[${i}].responsePath=this.value" placeholder="res[\"name\"]" style="flex:2;min-width:140px">
+      <select onchange="steps[${stepIndex}].assertions[${i}].operator=this.value" style="width:100px;flex:none">
+        <option value="equals" ${a.operator === 'equals' ? 'selected' : ''}>==</option>
+        <option value="contains" ${a.operator === 'contains' ? 'selected' : ''}>包含</option>
+        <option value="not_equals" ${a.operator === 'not_equals' ? 'selected' : ''}!=></option>
+        <option value="greater_than" ${a.operator === 'greater_than' ? 'selected' : ''}>></option>
+        <option value="less_than" ${a.operator === 'less_than' ? 'selected' : ''}><</option>
+        <option value="exists" ${a.operator === 'exists' ? 'selected' : ''}>存在</option>
+      </select>
+      <input value="${a.expectedValue}" oninput="steps[${stepIndex}].assertions[${i}].expectedValue=this.value" placeholder="期望值" style="flex:2;min-width:140px">
+      <button class="btn btn-outline btn-sm" onclick="removeStepAssertion(${stepIndex}, ${i})" style="color:var(--danger);width:32px;height:32px;padding:0">x</button>
+    </div>
+  `).join('');
+}
+
+function addStep() {
+  steps.push({apiId: '', apiName: '', variables: [], assertions: []});
+  renderSteps();
+}
+
+function showBatchAddModal() {
+  batchSelectedApis = [];
+  document.getElementById('batch-module-select').value = '';
+  document.getElementById('batch-api-list').innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray-400)">请先选择业务模块</div>';
+  document.getElementById('batch-selected-count').textContent = '0';
+  showModal('batch-add-modal');
+}
+
+function onBatchModuleChange() {
+  const moduleId = document.getElementById('batch-module-select').value;
+  const listDiv = document.getElementById('batch-api-list');
+  
+  if (!moduleId) {
+    listDiv.innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray-400)">请先选择业务模块</div>';
+    batchSelectedApis = [];
+    document.getElementById('batch-selected-count').textContent = '0';
+    return;
+  }
+  
+  const moduleApis = apis.filter(a => a.moduleId === moduleId);
+  
+  if (moduleApis.length === 0) {
+    listDiv.innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray-400)">该模块下暂无接口</div>';
+    batchSelectedApis = [];
+    document.getElementById('batch-selected-count').textContent = '0';
+    return;
+  }
+  
+  let html = '';
+  const allSelected = moduleApis.every(a => batchSelectedApis.includes(a.id));
+  html += '<div class="api-checkbox-row select-all-row" onclick="toggleSelectAllBatch()">';
+  html += '<input type="checkbox" onclick="event.stopPropagation();toggleSelectAllBatch()" ' + (allSelected ? 'checked' : '') + '>';
+  html += '<span class="api-name" style="font-weight:600;color:var(--primary)">全选</span>';
+  html += '<span style="font-size:12px;color:var(--gray-400)">共 ' + moduleApis.length + ' 个接口</span>';
+  html += '</div>';
+  
+  moduleApis.forEach(api => {
+    const isSelected = batchSelectedApis.includes(api.id);
+    const methodClass = api.method.toLowerCase();
+    html += '<div class="api-checkbox-row ' + (isSelected ? 'selected' : '') + '" onclick="toggleBatchApi(\'' + api.id + '\')">';
+    html += '<input type="checkbox" onclick="event.stopPropagation();toggleBatchApi(\'' + api.id + '\')" ' + (isSelected ? 'checked' : '') + '>';
+    html += '<span class="api-method ' + methodClass + '">' + api.method + '</span>';
+    html += '<span class="api-name">' + api.name + '</span>';
+    html += '<span class="api-url">' + api.url + '</span>';
+    html += '</div>';
+  });
+  listDiv.innerHTML = html;
+}
+
+function toggleSelectAllBatch() {
+  const moduleId = document.getElementById('batch-module-select').value;
+  const moduleApis = apis.filter(a => a.moduleId === moduleId);
+  const allSelected = moduleApis.every(a => batchSelectedApis.includes(a.id));
+  
+  if (allSelected) {
+    moduleApis.forEach(a => {
+      const idx = batchSelectedApis.indexOf(a.id);
+      if (idx > -1) batchSelectedApis.splice(idx, 1);
+    });
+  } else {
+    moduleApis.forEach(a => {
+      if (!batchSelectedApis.includes(a.id)) {
+        batchSelectedApis.push(a.id);
+      }
+    });
+  }
+  
+  document.getElementById('batch-selected-count').textContent = batchSelectedApis.length;
+  onBatchModuleChange();
+}
+
+function toggleBatchApi(apiId) {
+  const index = batchSelectedApis.indexOf(apiId);
+  if (index > -1) {
+    batchSelectedApis.splice(index, 1);
+  } else {
+    batchSelectedApis.push(apiId);
+  }
+  document.getElementById('batch-selected-count').textContent = batchSelectedApis.length;
+  
+  const rows = document.querySelectorAll('#batch-api-list .api-checkbox-row');
+  rows.forEach(row => {
+    const checkbox = row.querySelector('input[type="checkbox"]');
+    const rowApiId = checkbox.getAttribute('onclick').match(/'([^']+)'/)[1];
+    const isSelected = batchSelectedApis.includes(rowApiId);
+    checkbox.checked = isSelected;
+    if (isSelected) {
+      row.classList.add('selected');
+    } else {
+      row.classList.remove('selected');
+    }
+  });
+}
+
+async function confirmBatchAdd() {
+  if (batchSelectedApis.length === 0) {
+    showToast('请至少选择一个接口', 'error');
+    return;
+  }
+  
+  for (const apiId of batchSelectedApis) {
+    const api = apis.find(a => a.id === apiId);
+    if (!api) continue;
+    
+    const newStep = {
+      apiId: api.id,
+      apiName: api.name,
+      variables: [],
+      assertions: []
+    };
+    
+    const res = await fetch('/api/apis/' + apiId);
+    const data = await res.json();
+    const apiData = data.api || data;
+    
+    if (apiData.variables) {
+      const varsStr = apiData.variables.replace(/[()（）]/g, '');
+      const varList = varsStr.split(/[,，]/).map(v => v.trim()).filter(v => v);
+      newStep.variables = varList.map(v => ({name: v, value: ''}));
+    }
+    
+    steps.push(newStep);
+  }
+  
+  closeModal('batch-add-modal');
+  renderSteps();
+  showToast('已添加 ' + batchSelectedApis.length + ' 个接口');
+}
+
+function addStepAssertion(stepIndex) {
+  if (!steps[stepIndex].assertions) steps[stepIndex].assertions = [];
+  steps[stepIndex].assertions.push({responsePath: '', operator: 'equals', expectedValue: ''});
+  renderSteps();
+}
+
+function removeStepAssertion(stepIndex, assertIndex) {
+  steps[stepIndex].assertions.splice(assertIndex, 1);
+  renderSteps();
+}
+
+function removeStep(index) {
+  if (steps.length <= 1) return;
+  steps.splice(index, 1);
+  renderSteps();
+}
+
+async function onStepApiChange(index, apiId) {
+  if (!apiId) {
+    apiId = document.getElementById(`step-api-input-${index}`)?.dataset.selectedId || '';
+  }
+  
+  if (!apiId) {
+    steps[index].apiId = '';
+    steps[index].apiName = '';
+    steps[index].variables = [];
+    renderSteps();
+    return;
+  }
+  
+  const api = apis.find(a => a.id === apiId);
+  steps[index].apiId = apiId;
+  steps[index].apiName = api ? api.name : '';
+  
+  const res = await fetch(`/api/apis/${apiId}`);
+  const data = await res.json();
+  const apiData = data.api || data;
+  
+  if (apiData.variables) {
+    const varsStr = apiData.variables.replace(/[()（）]/g, '');
+    const varList = varsStr.split(/[,，]/).map(v => v.trim()).filter(v => v);
+    steps[index].variables = varList.map(v => ({name: v, value: ''}));
+  } else {
+    steps[index].variables = [];
+  }
+  
+  renderSteps();
+}
+
+function addStepVariable(stepIndex) {
+  if (!steps[stepIndex].variables) steps[stepIndex].variables = [];
+  steps[stepIndex].variables.push({name: '', value: ''});
+  renderSteps();
+}
+
+function removeStepVariable(stepIndex, varIndex) {
+  steps[stepIndex].variables.splice(varIndex, 1);
+  renderSteps();
+}
+
+async function saveCase() {
+  const name = document.getElementById('case-name').value.trim();
+  const desc = document.getElementById('case-desc').value.trim();
+  
+  if (!name) { showToast('请输入用例名称', 'error'); return; }
+  
+  const validSteps = steps.filter(s => s.apiId);
+  if (validSteps.length === 0) { showToast('请至少选择一个接口', 'error'); return; }
+  
+  const caseSteps = validSteps.map((s, i) => ({
+    step: i + 1,
+    apiId: s.apiId,
+    apiName: s.apiName,
+    variables: s.variables.reduce((acc, v) => {
+      if (v.name.trim()) acc[v.name.trim()] = v.value.trim();
+      return acc;
+    }, {}),
+    assertions: (s.assertions || []).filter(a => a.responsePath.trim()).map(a => ({
+      responsePath: a.responsePath.trim(),
+      operator: a.operator,
+      expectedValue: a.expectedValue.trim()
+    }))
+  }));
+  
+  const moduleId = document.getElementById('case-module').value;
+  const payload = {
+    name,
+    description: desc,
+    moduleId,
+    steps: caseSteps
+  };
+  
+  if (editingCaseId) {
+    const res = await fetch(`/api/cases/${editingCaseId}`, {
+      method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) { showToast('用例已更新'); } else { showToast(data.msg, 'error'); }
+  } else {
+    const res = await fetch('/api/cases', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) { showToast('用例已添加'); } else { showToast(data.msg, 'error'); }
+  }
+  
+  closeModal('case-modal');
+  await loadCases();
+}
+
+async function deleteCase(id) {
+  if (!confirm('确定要删除这个用例吗？')) return;
+  const res = await fetch(`/api/cases/${id}`, {method: 'DELETE'});
+  const data = await res.json();
+  if (data.success) { showToast('用例已删除'); } else { showToast(data.msg, 'error'); }
+  await loadCases();
+}
+
+async function runCase(id) {
+  const res = await fetch(`/api/cases/${id}/run`, {method: 'POST'});
+  const data = await res.json();
+  
+  if (data.success) {
+    const results = data.results || [];
+    let content = '';
+    results.forEach((r, i) => {
+      let assertionHtml = '';
+      if (r.assertionResults && r.assertionResults.length > 0) {
+        assertionHtml = `
+          <div style="margin-top:8px;padding:8px;background:var(--gray-100);border-radius:6px">
+            <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:6px">断言结果 ${r.allAssertionsPass ? '<span class="tag tag-green">全部通过</span>' : '<span class="tag tag-red">部分失败</span>'}</div>
+            <div style="font-size:12px">
+              ${r.assertionResults.map(a => `
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                  <span class="tag ${a.result ? 'tag-green' : 'tag-red'}">${a.result ? '✓' : '✗'}</span>
+                  <span style="color:${a.result ? 'var(--success)' : 'var(--danger)'}">${a.responsePath} ${getOperatorText(a.operator)} ${a.expectedValue}</span>
+                  ${!a.result ? `<span style="color:var(--gray-400)">实际: ${a.actualValue}</span>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      const hasAssertions = r.assertionResults && r.assertionResults.length > 0;
+      const isPass = hasAssertions ? r.allAssertionsPass : (r.statusCode >= 200 && r.statusCode < 400);
+      
+      content += `
+        <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--gray-200)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span class="tag ${isPass ? 'tag-green' : 'tag-red'}" style="font-size:12px;padding:2px 8px">${isPass ? '✓ 通过' : '✗ 失败'}</span>
+            <span style="font-weight:600">步骤 ${i + 1}: ${r.apiName}</span>
+            <button class="btn btn-outline btn-sm" onclick="toggleResponse('resp-${i}')" style="margin-left:auto;padding:2px 8px;font-size:12px">展开响应</button>
+          </div>
+          <div style="display:flex;gap:16px;align-items:center">
+            <span class="tag ${r.statusCode < 400 ? 'tag-green' : 'tag-red'}">HTTP ${r.statusCode}</span>
+            <span style="color:var(--gray-600)">响应时间: <strong style="color:var(--primary)">${r.responseTime}ms</strong></span>
+          </div>
+          ${assertionHtml}
+          <div id="resp-${i}" style="display:none;margin-top:8px">
+            <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:4px">请求信息</div>
+            <div style="margin-bottom:8px;">
+              <div style="font-size:12px;color:var(--gray-600);margin-bottom:2px">
+                <span style="color:var(--primary);font-weight:600">${r.requestMethod || 'POST'}</span>
+                <span style="margin-left:8px">${r.requestUrl || ''}</span>
+              </div>
+              ${Object.keys(r.requestParams || {}).length > 0 ? `
+                <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
+                  <span style="font-weight:500">请求参数 (Params):</span>
+                  <pre class="result-panel" style="font-size:11px;max-height:100px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestParams, null, 2)}</pre>
+                </div>
+              ` : ''}
+              ${Object.keys(r.requestBody || {}).length > 0 ? `
+                <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
+                  <span style="font-weight:500">请求体 (Body):</span>
+                  <pre class="result-panel" style="font-size:11px;max-height:150px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestBody, null, 2)}</pre>
+                </div>
+              ` : ''}
+            </div>
+            <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:4px">响应内容</div>
+            <pre class="result-panel" style="font-size:12px;max-height:300px;overflow-y:auto">${JSON.stringify(r.response, null, 2)}</pre>
+          </div>
+        </div>
+      `;
+    });
+    document.getElementById('test-result-content').innerHTML = content;
+  } else {
+    document.getElementById('test-result-content').innerHTML = `<span class="tag tag-red">执行失败</span> ${data.msg}`;
+  }
+  
+  showModal('test-result-modal');
+}
+
+function getOperatorText(operator) {
+  const map = {
+    'equals': '==',
+    'contains': '包含',
+    'not_equals': '!=',
+    'greater_than': '>',
+    'less_than': '<',
+    'exists': '存在'
+  };
+  return map[operator] || operator;
+}
+
+function filterCasesByModule(moduleId) {
+  currentModuleFilter = moduleId;
+  
+  const filterItems = document.querySelectorAll('#case-module-filter .filter-item');
+  filterItems.forEach(item => item.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  filterCases();
+}
+
+function filterCases() {
+  const searchText = document.getElementById('case-search').value.toLowerCase();
+  const filtered = casesData.filter(c => {
+    const matchSearch = c.name.toLowerCase().includes(searchText);
+    const matchModule = !currentModuleFilter || c.moduleId === currentModuleFilter;
+    return matchSearch && matchModule;
+  });
+  
+  if (filtered.length === 0) {
+    document.getElementById('case-list').innerHTML = `
+      <tr><td colspan="7">
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <div class="title">没有找到匹配的用例</div>
+          <div class="desc">尝试调整筛选条件</div>
+        </div>
+      </td></tr>
+    `;
+    return;
+  }
+  
+  document.getElementById('case-list').innerHTML = filtered.map(c => {
+    const stepCount = c.steps ? c.steps.length : 1;
+    const module = caseModules.find(m => m.id === c.moduleId);
+    return `
+    <tr>
+      <td><input type="checkbox" class="case-checkbox" value="${c.id}"></td>
+      <td style="font-weight:500">${c.name}</td>
+      <td>${module ? `<span class="tag tag-purple">${module.name}</span>` : '-'}</td>
+      <td><span class="tag tag-blue">${stepCount} 步</span></td>
+      <td>${c.description || '-'}</td>
+      <td>${c.createdAt || '-'}</td>
+      <td class="actions">
+        <button class="btn btn-outline btn-sm" onclick="editCase('${c.id}')">编辑</button>
+        <button class="btn btn-primary btn-sm" onclick="runCase('${c.id}')">执行</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCase('${c.id}')">删除</button>
+      </td>
+    </tr>
+  `}).join('');
+}
+
+function toggleSelectAll(checkbox) {
+  const checkboxes = document.querySelectorAll('.case-checkbox');
+  checkboxes.forEach(cb => cb.checked = checkbox.checked);
+}
+
+async function runSelectedCases() {
+  const checkboxes = document.querySelectorAll('.case-checkbox:checked');
+  const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+  
+  if (selectedIds.length === 0) {
+    showToast('请先选择要执行的用例', 'error');
+    return;
+  }
+  
+  const btn = document.querySelector('button[onclick="runSelectedCases()"]');
+  const originalText = btn.textContent;
+  btn.textContent = '执行中...';
+  btn.disabled = true;
+  
+  let successCount = 0;
+  let errorCount = 0;
+  let allResults = [];
+  let reportData = [];
+  const startTime = new Date();
+  
+  reportData.push(['步骤', '用例名称', 'HTTP状态码', '响应时间(ms)', '执行结果', '断言结果', '错误信息']);
+  
+  try {
+    for (const caseId of selectedIds) {
+      const caseInfo = casesData.find(c => c.id === caseId);
+      const caseName = caseInfo ? caseInfo.name : caseId;
+      
+      const res = await fetch(`/api/cases/${caseId}/run`, {method: 'POST'});
+      const data = await res.json();
+      
+      if (data.success) {
+        successCount++;
+        const caseResults = data.results || [];
+        allResults.push(...caseResults);
+        
+        caseResults.forEach((r, idx) => {
+          const hasAssertions = r.assertionResults && r.assertionResults.length > 0;
+          const isPass = hasAssertions ? r.allAssertionsPass : (r.statusCode >= 200 && r.statusCode < 400);
+          const assertionResult = hasAssertions ? (r.allAssertionsPass ? '全部通过' : '部分失败') : '无断言';
+          
+          reportData.push([
+            allResults.length - caseResults.length + idx + 1,
+            caseName,
+            r.statusCode,
+            r.responseTime,
+            isPass ? '通过' : '失败',
+            assertionResult,
+            r.error || ''
+          ]);
+        });
+      } else {
+        errorCount++;
+        reportData.push([
+          allResults.length + 1,
+          caseName,
+          '-',
+          '-',
+          '失败',
+          '-',
+          data.msg || '未知错误'
+        ]);
+      }
+    }
+    
+    const endTime = new Date();
+    const duration = (endTime - startTime) / 1000;
+    
+    reportData.push(['', '', '', '', '', '', '']);
+    reportData.push(['统计信息', '', '', '', '', '', '']);
+    reportData.push(['执行时间', startTime.toLocaleString('zh-CN'), '', '', '', '', '']);
+    reportData.push(['结束时间', endTime.toLocaleString('zh-CN'), '', '', '', '', '']);
+    reportData.push(['耗时', duration.toFixed(2) + '秒', '', '', '', '', '']);
+    reportData.push(['成功用例数', successCount, '', '', '', '', '']);
+    reportData.push(['失败用例数', errorCount, '', '', '', '', '']);
+    reportData.push(['总用例数', selectedIds.length, '', '', '', '', '']);
+    
+    await saveReport(reportData, startTime);
+    
+    let content = '';
+    allResults.forEach((r, i) => {
+      let assertionHtml = '';
+      if (r.assertionResults && r.assertionResults.length > 0) {
+        assertionHtml = `
+          <div style="margin-top:8px;padding:8px;background:var(--gray-100);border-radius:6px">
+            <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:6px">断言结果 ${r.allAssertionsPass ? '<span class="tag tag-green">全部通过</span>' : '<span class="tag tag-red">部分失败</span>'}</div>
+            <div style="font-size:12px">
+              ${r.assertionResults.map(a => `
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                  <span class="tag ${a.result ? 'tag-green' : 'tag-red'}">${a.result ? '✓' : '✗'}</span>
+                  <span style="color:${a.result ? 'var(--success)' : 'var(--danger)'}">${a.responsePath} ${getOperatorText(a.operator)} ${a.expectedValue}</span>
+                  ${!a.result ? `<span style="color:var(--gray-400)">实际: ${a.actualValue}</span>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      const hasAssertions = r.assertionResults && r.assertionResults.length > 0;
+      const isPass = hasAssertions ? r.allAssertionsPass : (r.statusCode >= 200 && r.statusCode < 400);
+      
+      content += `
+        <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--gray-200)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span class="tag ${isPass ? 'tag-green' : 'tag-red'}" style="font-size:12px;padding:2px 8px">${isPass ? '✓ 通过' : '✗ 失败'}</span>
+            <span style="font-weight:600">步骤 ${i + 1}: ${r.apiName}</span>
+            <button class="btn btn-outline btn-sm" onclick="toggleResponse('resp-${i}')" style="margin-left:auto;padding:2px 8px;font-size:12px">展开响应</button>
+          </div>
+          <div style="display:flex;gap:16px;align-items:center">
+            <span class="tag ${r.statusCode < 400 ? 'tag-green' : 'tag-red'}">HTTP ${r.statusCode}</span>
+            <span style="color:var(--gray-600)">响应时间: <strong style="color:var(--primary)">${r.responseTime}ms</strong></span>
+          </div>
+          ${assertionHtml}
+          <div id="resp-${i}" style="display:none;margin-top:8px">
+            <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:4px">请求信息</div>
+            <div style="margin-bottom:8px;">
+              <div style="font-size:12px;color:var(--gray-600);margin-bottom:2px">
+                <span style="color:var(--primary);font-weight:600">${r.requestMethod || 'POST'}</span>
+                <span style="margin-left:8px">${r.requestUrl || ''}</span>
+              </div>
+              ${Object.keys(r.requestParams || {}).length > 0 ? `
+                <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
+                  <span style="font-weight:500">请求参数 (Params):</span>
+                  <pre class="result-panel" style="font-size:11px;max-height:100px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestParams, null, 2)}</pre>
+                </div>
+              ` : ''}
+              ${Object.keys(r.requestBody || {}).length > 0 ? `
+                <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
+                  <span style="font-weight:500">请求体 (Body):</span>
+                  <pre class="result-panel" style="font-size:11px;max-height:150px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestBody, null, 2)}</pre>
+                </div>
+              ` : ''}
+            </div>
+            <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:4px">响应内容</div>
+            <pre class="result-panel" style="font-size:12px;max-height:300px;overflow-y:auto">${JSON.stringify(r.response, null, 2)}</pre>
+          </div>
+        </div>
+      `;
+    });
+    
+    document.getElementById('test-result-content').innerHTML = content;
+    showModal('test-result-modal');
+    
+    showToast(`批量执行完成：成功 ${successCount} 个，失败 ${errorCount} 个`);
+    updateRunCount();
+  } catch (e) {
+    showToast('执行出错：' + e.message, 'error');
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+async function saveReport(reportData, startTime) {
+  const reportId = Date.now().toString();
+  const reportName = `测试报告_${startTime.getFullYear()}${String(startTime.getMonth() + 1).padStart(2, '0')}${String(startTime.getDate()).padStart(2, '0')}_${String(startTime.getHours()).padStart(2, '0')}${String(startTime.getMinutes()).padStart(2, '0')}`;
+  
+  let csvContent = '\uFEFF';
+  reportData.forEach(row => {
+    csvContent += row.map(cell => {
+      if (typeof cell === 'string' && cell.includes(',')) {
+        return `"${cell}"`;
+      }
+      return cell;
+    }).join(',') + '\n';
+  });
+  
+  await fetch('/api/test-reports', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      id: reportId,
+      name: reportName,
+      csvContent: csvContent,
+      totalCases: reportData.filter((_, i) => i > 0 && i < reportData.length - 9).length,
+      successCases: reportData.filter((_, i) => i > 0 && i < reportData.length - 9 && reportData[i][5] === '通过').length,
+      createdTime: startTime.toLocaleString('zh-CN')
+    })
+  });
+}
+
+async function updateRunCount() {
+  const res = await fetch('/api/test-reports');
+  const data = await res.json();
+  const count = data.reports ? data.reports.length : 0;
+  document.getElementById('stat-last-run').textContent = count;
+}
+
+async function showReportList() {
+  const res = await fetch('/api/test-reports');
+  const data = await res.json();
+  const reports = data.reports || [];
+  
+  if (reports.length === 0) {
+    document.getElementById('report-list-content').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📄</div>
+        <div class="title">还没有测试报告</div>
+        <div class="desc">执行测试用例后会自动生成报告</div>
+      </div>
+    `;
+  } else {
+    document.getElementById('report-list-content').innerHTML = `
+      <table class="table">
+        <thead>
+          <tr>
+            <th>报告名称</th>
+            <th>总用例数</th>
+            <th>成功数</th>
+            <th>失败数</th>
+            <th>生成时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${reports.map(r => `
+            <tr>
+              <td style="font-weight:500">${r.name}</td>
+              <td>${r.totalCases}</td>
+              <td><span class="tag tag-green">${r.successCases}</span></td>
+              <td><span class="tag tag-red">${r.totalCases - r.successCases}</span></td>
+              <td>${r.createdTime}</td>
+              <td class="actions">
+                <button class="btn btn-outline btn-sm" onclick="previewReport('${r.id}')">预览</button>
+                <button class="btn btn-primary btn-sm" onclick="downloadReport('${r.id}', '${r.name}')">下载</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}')">删除</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+  
+  showModal('report-list-modal');
+}
+
+async function previewReport(reportId) {
+  const res = await fetch(`/api/test-reports/${reportId}/preview`);
+  const data = await res.json();
+  
+  if (!data.success) {
+    showToast(data.msg, 'error');
+    return;
+  }
+  
+  document.getElementById('report-preview-title').textContent = `报告预览 - ${data.report.name}`;
+  
+  let html = '<table class="table" style="font-size:13px">';
+  data.csv_data.forEach((row, i) => {
+    html += `<tr ${i === 0 ? 'style="font-weight:600;background:var(--gray-100)"' : ''}>`;
+    row.forEach(cell => {
+      html += `<td>${cell || ''}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table>';
+  
+  document.getElementById('report-preview-content').innerHTML = html;
+  showModal('report-preview-modal');
+}
+
+async function downloadReport(reportId, reportName) {
+  const link = document.createElement('a');
+  link.href = `/api/test-reports/${reportId}/download`;
+  link.download = `${reportName}.csv`;
+  link.click();
+}
+
+async function deleteReport(reportId) {
+  if (!confirm('确定要删除这个报告吗？')) return;
+  
+  const res = await fetch(`/api/test-reports/${reportId}`, {method: 'DELETE'});
+  const data = await res.json();
+  
+  if (data.success) {
+    showToast('报告已删除');
+    showReportList();
+    updateRunCount();
+  } else {
+    showToast(data.msg || '删除失败', 'error');
+  }
+}
+
+function showAddModuleModal() {
+  document.getElementById('case-module-modal-title').textContent = '新增用例模块';
+  document.getElementById('case-module-name').value = '';
+  document.getElementById('case-module-desc').value = '';
+  showModal('case-module-modal', false);
+}
+
+async function saveCaseModule() {
+  const name = document.getElementById('case-module-name').value.trim();
+  const desc = document.getElementById('case-module-desc').value.trim();
+  
+  if (!name) { showToast('请输入模块名称', 'error'); return; }
+  
+  const res = await fetch('/api/case-modules', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, description: desc})
+  });
+  
+  const data = await res.json();
+  
+  if (data.success) {
+    showToast('模块已添加');
+    closeModal('case-module-modal');
+    await loadCaseModules();
+  } else {
+    showToast(data.msg || '添加失败', 'error');
+  }
+}
+
+function toggleResponse(id) {
+  const el = document.getElementById(id);
+  const btn = el.parentElement.querySelector('button');
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    btn.textContent = '收起响应';
+  } else {
+    el.style.display = 'none';
+    btn.textContent = '展开响应';
+  }
+}
+
+function filterCases() {
+  const keyword = document.getElementById('case-search').value.toLowerCase();
+  const rows = document.querySelectorAll('#case-list tr');
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(keyword) ? '' : 'none';
+  });
+}
+
+function showModal(id, allowOverlayClose = true) {
+  const modal = document.getElementById(id);
+  modal.classList.add('show');
+  
+  const overlay = modal;
+  const content = overlay.querySelector('.modal');
+  
+  const handleOverlayClick = (e) => {
+    if (e.target === overlay) {
+      closeModal(id);
+    }
+  };
+  
+  const removeHandler = () => {
+    overlay.removeEventListener('click', handleOverlayClick);
+    content.removeEventListener('click', stopPropagation);
+    modal.removeEventListener('transitionend', removeHandler);
+    modal.removeEventListener('animationend', removeHandler);
+  };
+  
+  const stopPropagation = (e) => {
+    e.stopPropagation();
+  };
+  
+  overlay.removeEventListener('click', handleOverlayClick);
+  content.removeEventListener('click', stopPropagation);
+  
+  if (allowOverlayClose) {
+    overlay.addEventListener('click', handleOverlayClick);
+  }
+  content.addEventListener('click', stopPropagation);
+  
+  modal.addEventListener('transitionend', removeHandler);
+  modal.addEventListener('animationend', removeHandler);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+function showToast(msg, type='success') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type} show`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+init();
+</script>
+</body>
+</html>
