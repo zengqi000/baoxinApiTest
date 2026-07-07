@@ -46,7 +46,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .card-title { font-size: 16px; font-weight: 600; }
 
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.stats { display: grid; grid-template-columns: repeat(1, 1fr); gap: 16px; margin-bottom: 24px; }
 .stat-card { background: white; border-radius: 12px; border: 1px solid var(--gray-200); padding: 20px; }
 .stat-card .label { color: var(--gray-400); font-size: 13px; margin-bottom: 4px; }
 .stat-card .value { font-size: 28px; font-weight: 600; }
@@ -54,27 +54,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .stat-card .value.green { color: var(--success); }
 .stat-card .value.blue { color: var(--blue); }
 .stat-card .value.orange { color: var(--warning); }
-
-/* 日历样式 */
-.calendar-wrapper { padding: 12px; height: 100%; display: flex; flex-direction: column; }
-.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
-.calendar-title { font-size: 14px; font-weight: 600; color: var(--gray-900); }
-.calendar-nav { display: flex; gap: 4px; }
-.calendar-nav-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--gray-200); border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--gray-600); background: white; }
-.calendar-nav-btn:hover { border-color: var(--primary); color: var(--primary); }
-.calendar-today-btn { font-size: 11px; padding: 0 8px; height: 24px; }
-.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; flex: 1; }
-.calendar-day-header { text-align: center; font-size: 11px; color: var(--gray-400); padding: 4px 0; font-weight: 500; }
-.calendar-day { text-align: center; padding: 4px 0; font-size: 12px; cursor: pointer; border-radius: 4px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; aspect-ratio: 1; }
-.calendar-day:hover { background: var(--gray-100); }
-.calendar-day.current-month { color: var(--gray-900); }
-.calendar-day.other-month { color: var(--gray-300); }
-.calendar-day.today { background: var(--primary); color: white; font-weight: 600; }
-.calendar-day.selected { background: var(--primary-light); color: var(--primary); }
-.calendar-day.sunday { color: var(--danger); }
-.calendar-day.current-month.sunday { color: var(--danger); }
-.calendar-day.other-month.sunday { color: var(--gray-300); }
-.calendar-lunar { font-size: 8px; margin-top: 1px; opacity: 0.7; }
 
 .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
 .tag-purple { background: var(--primary-bg); color: var(--primary); }
@@ -185,6 +164,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .toast.show { transform: translateX(0); }
 .toast-success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-light); }
 .toast-error { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-light); }
+
+.custom-select { position: relative; width: 100%; }
+.custom-select-input { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; background: white; cursor: pointer; transition: border .2s; }
+.custom-select-input:focus { border-color: var(--primary); }
+.custom-select-input::placeholder { color: var(--gray-400); }
+.custom-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background: white; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 240px; overflow-y: auto; z-index: 100; display: none; }
+.custom-select-dropdown.show { display: block; }
+.custom-select-option { padding: 8px 12px; cursor: pointer; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+.custom-select-option:hover { background: var(--primary-bg); }
+.custom-select-option.selected { background: var(--primary-bg); color: var(--primary); font-weight: 500; }
+.custom-select-option .module-tag { font-size: 11px; color: var(--gray-400); background: var(--gray-100); padding: 1px 6px; border-radius: 4px; }
+.custom-select-empty { padding: 16px; text-align: center; color: var(--gray-400); font-size: 13px; }
 </style>
 </head>
 <body>
@@ -200,15 +191,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 
 <!-- 主内容区 -->
 <div class="main" id="app">
-  <!-- 统计卡片 -->
-  <div class="stats">
-    <div class="stat-card"><div class="label">业务模块</div><div class="value purple" id="stat-modules">0</div></div>
-    <div class="stat-card"><div class="label">接口总数</div><div class="value blue" id="stat-apis">0</div></div>
-    <div class="stat-card" style="padding:0">
-      <div id="calendar-container"></div>
-    </div>
-  </div>
-
   <!-- 页面头部 -->
   <div class="page-header">
     <div><h1>接口管理</h1><div class="subtitle">管理业务模块和接口配置，支持数据流转(缓存引用)</div></div>
@@ -392,6 +374,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
           <div class="method-option delete" onclick="selectMethod('DELETE')">DELETE</div>
         </div>
       </div>
+    </div>
+
+    <div class="form-group">
+      <label>前置接口</label>
+      <div class="custom-select" id="pre-api-select">
+        <input type="text" class="custom-select-input" placeholder="请选择前置接口（可选）" id="pre-api-input">
+        <div class="custom-select-dropdown" id="pre-api-dropdown"></div>
+      </div>
+      <div class="hint">选择前置接口后，执行该接口前会自动先执行前置接口</div>
     </div>
 
     <div class="form-group">
@@ -659,6 +650,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 <div class="toast" id="toast"></div>
 
 <script>
+function setActiveNav() {
+  const path = window.location.pathname;
+  document.querySelectorAll('.sidebar nav a').forEach(link => {
+    link.classList.remove('active');
+    if (link.getAttribute('href') === path) {
+      link.classList.add('active');
+    }
+  });
+}
+
 // ==================== 状态管理 ====================
 let currentModule = '';
 let currentPage = 1;
@@ -666,6 +667,8 @@ const pageSize = 10;
 let editingApiId = null;
 let editingModuleId = null;
 let currentMethod = 'POST';
+let allApis = [];
+let openDropdown = null;
 let assertions = [];
 let responseMappings = [];   // ★ 响应保存配置
 let paramBindings = [];       // ★ 参数引用配置
@@ -674,97 +677,23 @@ let cacheData = {};           // ★ 完整的缓存数据（用于读取headers
 
 // ==================== 初始化 ====================
 async function init() {
+  setActiveNav();
   await loadModules();
   await loadApis();
+  await loadAllApis();
+  initPreApiSelect();
+  setupGlobalClickHandler();
   await loadCache();
   await loadConfigs();
   await loadEnvConfig();
   updateStats();
   renderCacheConfig();
-  updateCalendar();
-  
 }
 
-let calendarCurrentDate = new Date();
-let calendarSelectedDate = null;
-
-function updateCalendar() {
-  const container = document.getElementById('calendar-container');
-  if (!container) return;
-  
-  const year = calendarCurrentDate.getFullYear();
-  const month = calendarCurrentDate.getMonth();
-  
-  const today = new Date();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startDay = firstDay.getDay();
-  const totalDays = lastDay.getDate();
-  
-  const prevMonthLastDay = new Date(year, month, 0).getDate();
-  const nextMonthStartDay = 42 - (startDay + totalDays);
-  
-  let html = '<div class="calendar-wrapper">';
-  
-  html += '<div class="calendar-header">';
-  html += '<div class="calendar-title">' + year + '年' + (month + 1) + '月</div>';
-  html += '<div class="calendar-nav">';
-  html += '<button class="calendar-nav-btn" onclick="changeMonth(-1)">‹</button>';
-  html += '<button class="calendar-nav-btn calendar-today-btn" onclick="goToToday()">今天</button>';
-  html += '<button class="calendar-nav-btn" onclick="changeMonth(1)">›</button>';
-  html += '</div>';
-  html += '</div>';
-  
-  html += '<div class="calendar-grid">';
-  const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
-  for (let i = 0; i < 7; i++) {
-    html += '<div class="calendar-day-header">' + dayNames[i] + '</div>';
-  }
-  
-  for (let i = startDay - 1; i >= 0; i--) {
-    const day = prevMonthLastDay - i;
-    const isSunday = (startDay - 1 - i) % 7 === 0;
-    html += '<div class="calendar-day other-month' + (isSunday ? ' sunday' : '') + '">' + day + '</div>';
-  }
-  
-  for (let i = 1; i <= totalDays; i++) {
-    const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === i;
-    const isSunday = (startDay + i - 1) % 7 === 0;
-    const isSelected = calendarSelectedDate && calendarSelectedDate.getFullYear() === year && 
-                       calendarSelectedDate.getMonth() === month && calendarSelectedDate.getDate() === i;
-    
-    let classes = 'calendar-day current-month';
-    if (isToday) classes += ' today';
-    if (isSelected) classes += ' selected';
-    if (isSunday) classes += ' sunday';
-    
-    html += '<div class="' + classes + '" onclick="selectDate(' + year + ',' + month + ',' + i + ')">' + i + '</div>';
-  }
-  
-  for (let i = 1; i <= nextMonthStartDay; i++) {
-    const isSunday = (startDay + totalDays + i - 1) % 7 === 0;
-    html += '<div class="calendar-day other-month' + (isSunday ? ' sunday' : '') + '">' + i + '</div>';
-  }
-  
-  html += '</div></div>';
-  
-  container.innerHTML = html;
-}
-
-function changeMonth(delta) {
-  calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() + delta);
-  updateCalendar();
-}
-
-function goToToday() {
-  calendarCurrentDate = new Date();
-  calendarSelectedDate = null;
-  updateCalendar();
-}
-
-function selectDate(year, month, day) {
-  calendarSelectedDate = new Date(year, month, day);
-  updateCalendar();
+async function loadAllApis() {
+  const res = await fetch('/api/apis');
+  const data = await res.json();
+  allApis = data.apis || [];
 }
 
 // ==================== 数据缓存 ====================
@@ -1281,7 +1210,8 @@ async function loadModules() {
     const modules = modulesData.modules || [];
     const apis = apisData.apis || [];
 
-    document.getElementById('stat-modules').textContent = modules.length;
+    const statModules = document.getElementById('stat-modules');
+    if (statModules) statModules.textContent = modules.length;
 
     const filter = document.getElementById('module-filter');
     filter.innerHTML = '<div class="filter-item active" data-id="" onclick="selectModule(\'\')">全部</div>';
@@ -1402,7 +1332,8 @@ async function loadApis(page = 1) {
     const data = await res.json();
     const apis = data.apis || [];
 
-    document.getElementById('stat-apis').textContent = apis.length;
+    const statApis = document.getElementById('stat-apis');
+    if (statApis) statApis.textContent = apis.length;
 
     const total = apis.length;
     const totalPages = Math.ceil(total / pageSize);
@@ -1543,6 +1474,109 @@ function copyScriptExample(index) {
   showToast('示例脚本已复制');
 }
 
+function initPreApiSelect() {
+  const container = document.getElementById('pre-api-select');
+  if (!container) return;
+  const input = document.getElementById('pre-api-input');
+  const dropdown = document.getElementById('pre-api-dropdown');
+
+  function renderOptions(selectedId) {
+    let html = '';
+    // Exclude the current editing API to prevent self-reference
+    const list = editingApiId ? allApis.filter(a => a.id !== editingApiId) : allApis;
+    list.forEach(api => {
+      const moduleName = api.moduleName || '';
+      const isSelected = api.id === selectedId;
+      html += '<div class="custom-select-option' + (isSelected ? ' selected' : '') + '" data-value="' + api.id + '" data-text="' + (api.name + (moduleName ? ' ' + moduleName : '')) + '">' +
+        '<span>' + api.name + '</span>' +
+        (moduleName ? '<span class="module-tag">' + moduleName + '</span>' : '') +
+        '</div>';
+    });
+    if (list.length === 0) {
+      html = '<div class="custom-select-empty">暂无接口数据</div>';
+    }
+    dropdown.innerHTML = html;
+    const selectedApi = allApis.find(a => a.id === selectedId);
+    input.value = selectedApi ? selectedApi.name : '';
+    input.dataset.selectedId = selectedId || '';
+  }
+
+  function filterOptions() {
+    const keyword = input.value.toLowerCase().trim();
+    const options = dropdown.querySelectorAll('.custom-select-option');
+    let hasVisible = false;
+    options.forEach(opt => {
+      const text = opt.dataset.text.toLowerCase();
+      if (keyword === '' || text.includes(keyword)) {
+        opt.style.display = '';
+        hasVisible = true;
+      } else {
+        opt.style.display = 'none';
+      }
+    });
+    if (!hasVisible && keyword !== '') {
+      dropdown.innerHTML = '<div class="custom-select-empty">没有找到匹配的接口</div>';
+    }
+  }
+
+  function showDropdown() {
+    if (openDropdown && openDropdown !== dropdown) {
+      openDropdown.classList.remove('show');
+    }
+    dropdown.classList.add('show');
+    openDropdown = dropdown;
+    filterOptions();
+  }
+
+  function hideDropdown() {
+    dropdown.classList.remove('show');
+    if (openDropdown === dropdown) {
+      openDropdown = null;
+    }
+  }
+
+  input.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showDropdown();
+  });
+
+  input.addEventListener('input', () => {
+    const selectedApi = allApis.find(a => a.id === input.dataset.selectedId);
+    const selectedName = selectedApi ? selectedApi.name : '';
+    if (input.value !== selectedName) {
+      input.dataset.selectedId = '';
+    }
+    showDropdown();
+    filterOptions();
+  });
+
+  dropdown.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const option = e.target.closest('.custom-select-option');
+    if (option) {
+      const apiId = option.dataset.value;
+      const api = allApis.find(a => a.id === apiId);
+      input.value = api ? api.name : '';
+      input.dataset.selectedId = apiId;
+      dropdown.querySelectorAll('.custom-select-option').forEach(opt => opt.classList.remove('selected'));
+      option.classList.add('selected');
+      hideDropdown();
+    }
+  });
+
+  // Store render function globally for reuse
+  window.renderPreApiOptions = renderOptions;
+}
+
+function setupGlobalClickHandler() {
+  document.addEventListener('click', () => {
+    if (openDropdown) {
+      openDropdown.classList.remove('show');
+      openDropdown = null;
+    }
+  });
+}
+
 function showAddApiModal() {
   editingApiId = null;
   document.getElementById('api-modal-title').textContent = '新增接口';
@@ -1556,6 +1590,7 @@ function showAddApiModal() {
   document.getElementById('api-body').value = '';
   document.getElementById('api-params').value = '';
   document.getElementById('api-script').value = '';
+  if (window.renderPreApiOptions) window.renderPreApiOptions('');
   selectMethod('POST');
   assertions = [];
   responseMappings = [];
@@ -1587,6 +1622,7 @@ async function showEditApiModal(id) {
   document.getElementById('api-body').value = api.body ? JSON.stringify(api.body, null, 2) : '';
   document.getElementById('api-params').value = api.params ? JSON.stringify(api.params, null, 2) : '';
   document.getElementById('api-script').value = api.script || '';
+  if (window.renderPreApiOptions) window.renderPreApiOptions(api.preApiId || '');
   selectMethod(api.method || 'POST');
   assertions = api.assertions || [];
   responseMappings = api.responseMapping || [];
@@ -1613,13 +1649,15 @@ async function saveApi() {
   try { params = document.getElementById('api-params').value ? JSON.parse(document.getElementById('api-params').value) : {}; } catch(e) { showToast('参数JSON格式错误', 'error'); return; }
 
   const script = document.getElementById('api-script').value.trim();
+  const preApiId = document.getElementById('pre-api-input').dataset.selectedId || '';
   const payload = {
     name, funcName, moduleId, url, method: currentMethod,
     description: desc, headers: {}, params, body, assertions,
-    responseMapping: responseMappings,   // ★ 新增
-    paramBinding: paramBindings,         // ★ 新增
-    variables,                           // ★ 接口变量
-    script                               // ★ Python脚本
+    responseMapping: responseMappings,
+    paramBinding: paramBindings,
+    variables,
+    script,
+    preApiId
   };
 
   if (editingApiId) {
@@ -1627,27 +1665,29 @@ async function saveApi() {
       method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
     });
     const data = await res.json();
-    if (data.success) { 
-      showToast('接口已更新'); 
+    if (data.success) {
+      showToast('接口已更新');
       closeModal('api-modal');
       await loadModules();
       await loadApis();
+      await loadAllApis();
       await loadCache();
       updateStats();
-    } else { 
-      showToast(data.msg, 'error'); 
+    } else {
+      showToast(data.msg, 'error');
     }
   } else {
     const res = await fetch('/api/apis', {
       method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
     });
     const data = await res.json();
-    if (data.success) { 
+    if (data.success) {
       document.getElementById('api-funcname').value = data.api.funcName || '';
-      showToast('接口已添加，函数名：' + (data.api.funcName || '')); 
+      showToast('接口已添加，函数名：' + (data.api.funcName || ''));
       closeModal('api-modal');
       await loadModules();
       await loadApis();
+      await loadAllApis();
       await loadCache();
       updateStats();
     } else { 
@@ -2020,7 +2060,10 @@ function filterApis() {
 
 // ==================== 统计更新 ====================
 function updateStats() {
-  const apiCount = parseInt(document.getElementById('stat-apis').textContent) || 0;
+  const statApis = document.getElementById('stat-apis');
+  if (statApis) {
+    const apiCount = parseInt(statApis.textContent) || 0;
+  }
 }
 
 // ==================== 模态框通用 ====================

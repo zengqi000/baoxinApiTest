@@ -106,7 +106,7 @@ class TestService:
         
         return exec_locals, saved_data
 
-    def test_api(self, api_id, variables=None, step_assertions=None, write_cache=True):
+    def test_api(self, api_id, variables=None, step_assertions=None, write_cache=True, temp_vars=None):
         api = self.api_model.get_by_id(api_id)
         if not api:
             return {"status": "error", "message": "接口不存在"}
@@ -117,10 +117,22 @@ class TestService:
             step_assertions = []
         
         configs_data = self.config_model.get_all()
+        temp_vars = temp_vars or {}
         cache_data = {
-            "datas": {**self.cache_service.get_datas(), **variables},
+            "datas": {**self.cache_service.get_datas(), **temp_vars},
             "headers": self.cache_service.get_headers()
         }
+        
+        resolved_variables = {}
+        for k, v in variables.items():
+            if isinstance(v, str):
+                resolved_variables[k] = self.resolve_placeholders(v, configs_data, cache_data)
+            else:
+                resolved_variables[k] = v
+        
+        cache_data["datas"].update(resolved_variables)
+        logger.info(f"test_api - api_id={api_id}, temp_vars={temp_vars}, variables={variables}, resolved_variables={resolved_variables}")
+        logger.info(f"test_api - cache_data[datas] keys={list(cache_data['datas'].keys())}")
         
         url = api["url"]
         if url.startswith('/'):
@@ -143,8 +155,9 @@ class TestService:
         if api.get("body"):
             body = self.resolve_placeholders(api["body"], configs_data, cache_data)
         
+        method = api.get("method", "POST").upper()
+        
         try:
-            method = api.get("method", "POST").upper()
             
             if method == "GET":
                 response = requests.get(url, headers=headers, params=params, timeout=30)
@@ -309,6 +322,8 @@ class TestService:
                 "requestHeaders": headers,
                 "requestParams": params,
                 "requestBody": body,
+                "requestUrl": url,
+                "requestMethod": method,
                 "responseTime": response.elapsed.total_seconds() * 1000
             }
         
@@ -333,6 +348,8 @@ class TestService:
                 "requestHeaders": headers,
                 "requestParams": params,
                 "requestBody": body,
+                "requestUrl": url,
+                "requestMethod": method,
                 "logs": [],
                 "assertions": [],
                 "allAssertionsPass": True,
@@ -391,6 +408,7 @@ class TestService:
         results = []
         success_count = 0
         error_count = 0
+        temp_vars = {}
         
         steps = case.get("steps", [])
         for step in steps:
@@ -400,7 +418,7 @@ class TestService:
             assertions = step.get("assertions", [])
             
             try:
-                result = self.test_api(api_id, variables, assertions, write_cache=False)
+                result = self.test_api(api_id, variables, assertions, write_cache=False, temp_vars=temp_vars)
                 if result["status"] == "success":
                     success_count += 1
                 else:
@@ -411,6 +429,10 @@ class TestService:
                 if url.startswith('/'):
                     url = config.get_host() + url
                 method = api.get("method", "POST").upper() if api else "POST"
+                
+                for log in result.get("savingLog", []):
+                    if log.get("value") is not None:
+                        temp_vars[log["cacheKey"]] = log["value"]
                 
                 results.append({
                     "step": step.get("step", 0),
@@ -427,7 +449,9 @@ class TestService:
                     "requestBody": result.get("requestBody", {}),
                     "requestHeaders": result.get("requestHeaders", {}),
                     "assertionResults": result.get("assertions", []),
-                    "allAssertionsPass": result.get("allAssertionsPass", True)
+                    "allAssertionsPass": result.get("allAssertionsPass", True),
+                    "savingLog": result.get("savingLog", []),
+                    "bindingLog": result.get("bindingLog", [])
                 })
             except Exception as e:
                 error_count += 1

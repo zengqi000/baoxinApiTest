@@ -253,6 +253,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 
     <div class="section-divider">
       <div class="section-title">测试步骤</div>
+      <div id="steps-response-fields-summary" style="margin-bottom:12px;padding:12px;background:var(--gray-50);border-radius:8px;border:1px solid var(--gray-200)">
+        <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:8px">📋 已选接口返回字段（可在变量参数中引用）</div>
+        <div id="response-fields-content" style="font-size:12px;color:var(--gray-500)">
+          选择接口后显示返回字段
+        </div>
+      </div>
       <div id="steps-container">
       </div>
       <div style="display:flex;gap:8px;margin-top:12px">
@@ -338,6 +344,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
     <button class="close-btn" onclick="closeModal('report-preview-modal')">x</button>
     <h2 id="report-preview-title">报告预览</h2>
     <div id="report-preview-content" style="margin-bottom:16px;max-height:500px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<button id="realtime-log-btn" onclick="toggleLogModal()" style="position:fixed;top:20px;right:20px;z-index:300;background:var(--primary);color:white;border:none;border-radius:20px;padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;box-shadow:0 4px 12px rgba(24,144,255,0.3);display:flex;align-items:center;gap:6px">
+  📋 实时日志
+</button>
+
+<div class="modal-overlay" id="log-modal" onclick="if(event.target===this)closeLogModal()">
+  <div class="modal" style="width:900px;max-width:95vw;height:70vh;max-height:80vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid var(--gray-200);background:#1e1e1e;color:#fff;border-radius:16px 16px 0 0">
+      <div style="display:flex;gap:6px;margin-right:12px">
+        <div style="width:12px;height:12px;border-radius:50%;background:#ff5f57"></div>
+        <div style="width:12px;height:12px;border-radius:50%;background:#febc2e"></div>
+        <div style="width:12px;height:12px;border-radius:50%;background:#28c840"></div>
+      </div>
+      <span style="font-size:13px;color:#ccc;font-weight:500">实时日志 - Terminal</span>
+      <button class="close-btn" onclick="closeLogModal()" style="color:#ccc;right:16px;top:14px">x</button>
+    </div>
+    <div id="log-content" style="flex:1;overflow-y:auto;background:#1e1e1e;color:#d4d4d4;padding:12px 16px;font-family:'Consolas','Monaco','Courier New',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all"></div>
+    <div style="display:flex;gap:10px;padding:12px 20px;border-top:1px solid #333;background:#252526;border-radius:0 0 16px 16px">
+      <button class="btn btn-outline" onclick="clearLogs()" style="background:transparent;border:1px solid #555;color:#ccc">
+        🗑 清空日志
+      </button>
+      <button class="btn btn-primary" onclick="closeLogModal()" style="margin-left:auto">
+        关闭
+      </button>
+    </div>
   </div>
 </div>
 
@@ -648,6 +681,12 @@ function renderSteps() {
         </div>
       </div>
       <div class="form-group">
+        <label>接口返回字段</label>
+        <div id="step-response-fields-${index}" style="min-height:30px;padding:8px;background:var(--gray-100);border-radius:6px;font-size:13px;color:var(--gray-400)">
+          ${renderStepResponseFields(index)}
+        </div>
+      </div>
+      <div class="form-group">
         <label>变量参数</label>
         <div id="step-variables-${index}">${renderStepVariables(index, step.variables)}</div>
         <button class="btn btn-outline btn-sm" onclick="addStepVariable(${index})">+ 添加变量</button>
@@ -668,6 +707,36 @@ function renderSteps() {
       onStepApiChange(index, apiId);
     });
   });
+  
+  updateResponseFieldsSummary();
+}
+
+function renderStepResponseFields(stepIndex) {
+  const step = steps[stepIndex];
+  if (!step || !step.apiId) {
+    return '<span style="color:var(--gray-400)">选择接口后显示响应保存配置的缓存键名</span>';
+  }
+  
+  const api = apis.find(a => a.id === step.apiId);
+  if (!api) {
+    return '<span style="color:var(--gray-400)">选择接口后显示响应保存配置的缓存键名</span>';
+  }
+  
+  const responseMapping = api.responseMapping || [];
+  if (responseMapping.length === 0) {
+    return '<span style="color:var(--gray-400)">该接口无响应保存配置</span>';
+  }
+  
+  return responseMapping.map((m, i) => {
+    const comment = m.comment || m.cacheKey;
+    return `
+      <div style="display:flex;align-items:center;gap:4px;padding:6px 0;border-bottom:1px solid var(--gray-200);last-child{border-bottom:none}">
+        <span style="color:var(--gray-600);font-size:13px">${comment}</span>
+        <span style="color:var(--gray-400)">：</span>
+        <span style="color:var(--primary);font-weight:600;font-size:13px">${m.cacheKey}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderStepVariables(stepIndex, variables) {
@@ -707,6 +776,52 @@ function renderStepAssertions(stepIndex, assertions) {
 function addStep() {
   steps.push({apiId: '', apiName: '', variables: [], assertions: []});
   renderSteps();
+}
+
+function updateResponseFieldsSummary() {
+  const contentEl = document.getElementById('response-fields-content');
+  if (!contentEl) return;
+  
+  const allFields = [];
+  
+  steps.forEach((step, index) => {
+    if (!step.apiId) return;
+    
+    const api = apis.find(a => a.id === step.apiId);
+    if (!api) return;
+    
+    const responseMapping = api.responseMapping || [];
+    responseMapping.forEach(m => {
+      const comment = m.comment || m.cacheKey;
+      allFields.push({
+        step: index + 1,
+        apiName: step.apiName,
+        comment: comment,
+        cacheKey: m.cacheKey
+      });
+    });
+  });
+  
+  if (allFields.length === 0) {
+    contentEl.innerHTML = '<span style="color:var(--gray-400)">选择接口后显示返回字段</span>';
+    return;
+  }
+  
+  let html = '';
+  const lb = '{';
+  const rb = '}';
+  allFields.forEach((field, idx) => {
+    html += `
+      <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed var(--gray-200);last-child{border-bottom:none}">
+        <span style="color:var(--gray-400);font-size:11px">步骤${field.step}</span>
+        <span style="color:var(--gray-600);font-size:12px">${field.comment}</span>
+        <span style="color:var(--primary);font-weight:600;font-size:12px">${field.cacheKey}</span>
+        <span style="color:var(--gray-300);font-size:11px">引用方式: ${lb+lb}${field.cacheKey}${rb+rb}</span>
+      </div>
+    `;
+  });
+  
+  contentEl.innerHTML = html;
 }
 
 function showBatchAddModal() {
@@ -885,6 +1000,25 @@ async function onStepApiChange(index, apiId) {
   }
   
   renderSteps();
+  
+  const responseFieldsEl = document.getElementById(`step-response-fields-${index}`);
+  if (responseFieldsEl) {
+    const responseMapping = apiData.responseMapping || [];
+    if (responseMapping.length === 0) {
+      responseFieldsEl.innerHTML = '<span style="color:var(--gray-400)">该接口无响应保存配置</span>';
+    } else {
+      responseFieldsEl.innerHTML = responseMapping.map((m, i) => {
+        const comment = m.comment || m.cacheKey;
+        return `
+          <div style="display:flex;align-items:center;gap:4px;padding:6px 0;border-bottom:1px solid var(--gray-200);last-child{border-bottom:none}">
+            <span style="color:var(--gray-600);font-size:13px">${comment}</span>
+            <span style="color:var(--gray-400)">：</span>
+            <span style="color:var(--primary);font-weight:600;font-size:13px">${m.cacheKey}</span>
+          </div>
+        `;
+      }).join('');
+    }
+  }
 }
 
 function addStepVariable(stepIndex) {
@@ -957,78 +1091,170 @@ async function deleteCase(id) {
 }
 
 async function runCase(id) {
-  const res = await fetch(`/api/cases/${id}/run`, {method: 'POST'});
-  const data = await res.json();
+  document.getElementById('test-result-content').innerHTML = `
+    <div style="text-align:center;padding:40px">
+      <div style="font-size:32px;margin-bottom:16px">⏳</div>
+      <div style="font-size:16px;color:var(--gray-600)">正在执行用例...</div>
+      <div id="execution-progress" style="margin-top:24px;text-align:left">
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:8px">执行进度:</div>
+        <div id="progress-steps"></div>
+      </div>
+    </div>
+  `;
+  showModal('test-result-modal');
   
-  if (data.success) {
-    const results = data.results || [];
-    let content = '';
-    results.forEach((r, i) => {
-      let assertionHtml = '';
-      if (r.assertionResults && r.assertionResults.length > 0) {
-        assertionHtml = `
-          <div style="margin-top:8px;padding:8px;background:var(--gray-100);border-radius:6px">
-            <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:6px">断言结果 ${r.allAssertionsPass ? '<span class="tag tag-green">全部通过</span>' : '<span class="tag tag-red">部分失败</span>'}</div>
-            <div style="font-size:12px">
-              ${r.assertionResults.map(a => `
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-                  <span class="tag ${a.result ? 'tag-green' : 'tag-red'}">${a.result ? '✓' : '✗'}</span>
-                  <span style="color:${a.result ? 'var(--success)' : 'var(--danger)'}">${a.responsePath} ${getOperatorText(a.operator)} ${a.expectedValue}</span>
-                  ${!a.result ? `<span style="color:var(--gray-400)">实际: ${a.actualValue}</span>` : ''}
+  const allResults = [];
+  
+  try {
+    const response = await fetch(`/api/cases/${id}/run/stream`, {method: 'POST'});
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      
+      const chunks = decoder.decode(value).split('\n\n');
+      for (const chunk of chunks) {
+        if (!chunk.startsWith('data: ')) continue;
+        
+        const jsonStr = chunk.replace('data: ', '').trim();
+        if (!jsonStr) continue;
+        
+        try {
+          const event = JSON.parse(jsonStr);
+          
+          if (event.type === 'start') {
+            let stepsHtml = '';
+            for (let i = 1; i <= event.totalSteps; i++) {
+              stepsHtml += `
+                <div id="progress-step-${i}" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                  <span id="progress-icon-${i}" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--gray-200);display:flex;align-items:center;justify-content:center;font-size:10px">${i}</span>
+                  <span id="progress-name-${i}" style="color:var(--gray-400);font-size:13px">等待执行...</span>
                 </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
+              `;
+            }
+            document.getElementById('progress-steps').innerHTML = stepsHtml;
+          } else if (event.type === 'step_start') {
+            document.getElementById(`progress-icon-${event.step}`).style.borderColor = 'var(--primary)';
+            document.getElementById(`progress-icon-${event.step}`).style.background = 'var(--primary-bg)';
+            document.getElementById(`progress-name-${event.step}`).textContent = event.apiName;
+            document.getElementById(`progress-name-${event.step}`).style.color = 'var(--gray-600)';
+          } else if (event.type === 'step_result') {
+            const result = event.result;
+            const hasAssertions = result.assertionResults && result.assertionResults.length > 0;
+            const isPass = hasAssertions ? result.allAssertionsPass : (result.statusCode >= 200 && result.statusCode < 400);
+            
+            const icon = document.getElementById(`progress-icon-${event.step}`);
+            icon.innerHTML = isPass ? '✓' : '✗';
+            icon.style.borderColor = isPass ? 'var(--success)' : 'var(--danger)';
+            icon.style.background = isPass ? 'var(--success-bg)' : 'var(--danger-bg)';
+            icon.style.color = isPass ? 'var(--success)' : 'var(--danger)';
+            
+            document.getElementById(`progress-name-${event.step}`).textContent = result.apiName + (isPass ? ' ✓ 通过' : ' ✗ 失败');
+            document.getElementById(`progress-name-${event.step}`).style.color = isPass ? 'var(--success)' : 'var(--danger)';
+            
+            allResults.push(result);
+          } else if (event.type === 'end') {
+            renderCaseResults(allResults);
+            return;
+          } else if (event.type === 'error') {
+            document.getElementById('test-result-content').innerHTML = `<span class="tag tag-red">执行失败</span> ${event.message}`;
+            return;
+          }
+        } catch (e) {
+          console.error('解析SSE事件失败:', e);
+        }
       }
-      
-      const hasAssertions = r.assertionResults && r.assertionResults.length > 0;
-      const isPass = hasAssertions ? r.allAssertionsPass : (r.statusCode >= 200 && r.statusCode < 400);
-      
-      content += `
-        <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--gray-200)">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <span class="tag ${isPass ? 'tag-green' : 'tag-red'}" style="font-size:12px;padding:2px 8px">${isPass ? '✓ 通过' : '✗ 失败'}</span>
-            <span style="font-weight:600">步骤 ${i + 1}: ${r.apiName}</span>
-            <button class="btn btn-outline btn-sm" onclick="toggleResponse('resp-${i}')" style="margin-left:auto;padding:2px 8px;font-size:12px">展开响应</button>
-          </div>
-          <div style="display:flex;gap:16px;align-items:center">
-            <span class="tag ${r.statusCode < 400 ? 'tag-green' : 'tag-red'}">HTTP ${r.statusCode}</span>
-            <span style="color:var(--gray-600)">响应时间: <strong style="color:var(--primary)">${r.responseTime}ms</strong></span>
-          </div>
-          ${assertionHtml}
-          <div id="resp-${i}" style="display:none;margin-top:8px">
-            <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:4px">请求信息</div>
-            <div style="margin-bottom:8px;">
-              <div style="font-size:12px;color:var(--gray-600);margin-bottom:2px">
-                <span style="color:var(--primary);font-weight:600">${r.requestMethod || 'POST'}</span>
-                <span style="margin-left:8px">${r.requestUrl || ''}</span>
+    }
+  } catch (e) {
+    console.error('执行用例失败:', e);
+    document.getElementById('test-result-content').innerHTML = `<span class="tag tag-red">执行失败</span> ${e.message}`;
+  }
+}
+
+function renderCaseResults(results) {
+  if (results.length === 0) {
+    document.getElementById('test-result-content').innerHTML = '<span class="tag tag-gray">无执行结果</span>';
+    return;
+  }
+  
+  let content = '';
+  results.forEach((r, i) => {
+    let assertionHtml = '';
+    if (r.assertionResults && r.assertionResults.length > 0) {
+      assertionHtml = `
+        <div style="margin-top:8px;padding:8px;background:var(--gray-100);border-radius:6px">
+          <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:6px">断言结果 ${r.allAssertionsPass ? '<span class="tag tag-green">全部通过</span>' : '<span class="tag tag-red">部分失败</span>'}</div>
+          <div style="font-size:12px">
+            ${r.assertionResults.map(a => `
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                <span class="tag ${a.result ? 'tag-green' : 'tag-red'}">${a.result ? '✓' : '✗'}</span>
+                <span style="color:${a.result ? 'var(--success)' : 'var(--danger)'}">${a.responsePath} ${getOperatorText(a.operator)} ${a.expectedValue}</span>
+                ${!a.result ? `<span style="color:var(--gray-400)">实际: ${a.actualValue}</span>` : ''}
               </div>
-              ${Object.keys(r.requestParams || {}).length > 0 ? `
-                <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
-                  <span style="font-weight:500">请求参数 (Params):</span>
-                  <pre class="result-panel" style="font-size:11px;max-height:100px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestParams, null, 2)}</pre>
-                </div>
-              ` : ''}
-              ${Object.keys(r.requestBody || {}).length > 0 ? `
-                <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
-                  <span style="font-weight:500">请求体 (Body):</span>
-                  <pre class="result-panel" style="font-size:11px;max-height:150px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestBody, null, 2)}</pre>
-                </div>
-              ` : ''}
-            </div>
-            <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:4px">响应内容</div>
-            <pre class="result-panel" style="font-size:12px;max-height:300px;overflow-y:auto">${JSON.stringify(r.response, null, 2)}</pre>
+            `).join('')}
           </div>
         </div>
       `;
-    });
-    document.getElementById('test-result-content').innerHTML = content;
-  } else {
-    document.getElementById('test-result-content').innerHTML = `<span class="tag tag-red">执行失败</span> ${data.msg}`;
-  }
-  
-  showModal('test-result-modal');
+    }
+    
+    const hasAssertions = r.assertionResults && r.assertionResults.length > 0;
+    const isPass = hasAssertions ? r.allAssertionsPass : (r.statusCode >= 200 && r.statusCode < 400);
+    
+    content += `
+      <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--gray-200)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span class="tag ${isPass ? 'tag-green' : 'tag-red'}" style="font-size:12px;padding:2px 8px">${isPass ? '✓ 通过' : '✗ 失败'}</span>
+          <span style="font-weight:600">步骤 ${i + 1}: ${r.apiName}</span>
+          <button class="btn btn-outline btn-sm" onclick="toggleResponse('resp-${i}')" style="margin-left:auto;padding:2px 8px;font-size:12px">展开响应</button>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center">
+          <span class="tag ${r.statusCode < 400 ? 'tag-green' : 'tag-red'}">HTTP ${r.statusCode}</span>
+          <span style="color:var(--gray-600)">响应时间: <strong style="color:var(--primary)">${r.responseTime}ms</strong></span>
+        </div>
+        ${assertionHtml}
+        <div style="margin-top:8px;padding:8px;background:var(--gray-100);border-radius:6px">
+          <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:4px">请求信息</div>
+          <div style="font-size:12px;color:var(--gray-600);margin-bottom:2px">
+            <span style="color:var(--primary);font-weight:600">${r.requestMethod || 'POST'}</span>
+            <span style="margin-left:8px">${r.requestUrl || ''}</span>
+          </div>
+          ${Object.keys(r.requestParams || {}).length > 0 ? `
+            <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
+              <span style="font-weight:500">请求参数 (Params):</span>
+              <pre class="result-panel" style="font-size:11px;max-height:100px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestParams, null, 2)}</pre>
+            </div>
+          ` : ''}
+          ${Object.keys(r.requestBody || {}).length > 0 ? `
+            <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
+              <span style="font-weight:500">请求体 (Body):</span>
+              <pre class="result-panel" style="font-size:11px;max-height:150px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestBody, null, 2)}</pre>
+            </div>
+          ` : ''}
+          ${(r.savingLog && r.savingLog.length > 0) ? `
+            <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
+              <span style="font-weight:500">响应保存配置:</span>
+              <div style="margin-top:4px;background:#f6ffed;border:1px solid #b7eb8f;border-radius:4px;padding:6px 8px">
+                ${r.savingLog.map(s => `
+                  <div style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:12px">
+                    <span style="color:var(--primary);font-weight:600">${s.cacheKey}</span>
+                    <span style="color:var(--gray-400)">=</span>
+                    <span style="color:#389e0d;font-weight:500">${s.value === null || s.value === undefined ? '(空)' : String(s.value)}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+        <div id="resp-${i}" style="display:none;margin-top:8px">
+          <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:4px">响应内容</div>
+          <pre class="result-panel" style="font-size:12px;max-height:300px;overflow-y:auto">${JSON.stringify(r.response, null, 2)}</pre>
+        </div>
+      </div>
+    `;
+  });
+  document.getElementById('test-result-content').innerHTML = content;
 }
 
 function getOperatorText(operator) {
@@ -1230,26 +1456,40 @@ async function runSelectedCases() {
             <span style="color:var(--gray-600)">响应时间: <strong style="color:var(--primary)">${r.responseTime}ms</strong></span>
           </div>
           ${assertionHtml}
-          <div id="resp-${i}" style="display:none;margin-top:8px">
+          <div style="margin-top:8px;padding:8px;background:var(--gray-100);border-radius:6px">
             <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:4px">请求信息</div>
-            <div style="margin-bottom:8px;">
-              <div style="font-size:12px;color:var(--gray-600);margin-bottom:2px">
-                <span style="color:var(--primary);font-weight:600">${r.requestMethod || 'POST'}</span>
-                <span style="margin-left:8px">${r.requestUrl || ''}</span>
-              </div>
-              ${Object.keys(r.requestParams || {}).length > 0 ? `
-                <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
-                  <span style="font-weight:500">请求参数 (Params):</span>
-                  <pre class="result-panel" style="font-size:11px;max-height:100px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestParams, null, 2)}</pre>
-                </div>
-              ` : ''}
-              ${Object.keys(r.requestBody || {}).length > 0 ? `
-                <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
-                  <span style="font-weight:500">请求体 (Body):</span>
-                  <pre class="result-panel" style="font-size:11px;max-height:150px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestBody, null, 2)}</pre>
-                </div>
-              ` : ''}
+            <div style="font-size:12px;color:var(--gray-600);margin-bottom:2px">
+              <span style="color:var(--primary);font-weight:600">${r.requestMethod || 'POST'}</span>
+              <span style="margin-left:8px">${r.requestUrl || ''}</span>
             </div>
+            ${Object.keys(r.requestParams || {}).length > 0 ? `
+              <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
+                <span style="font-weight:500">请求参数 (Params):</span>
+                <pre class="result-panel" style="font-size:11px;max-height:100px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestParams, null, 2)}</pre>
+              </div>
+            ` : ''}
+            ${Object.keys(r.requestBody || {}).length > 0 ? `
+              <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
+                <span style="font-weight:500">请求体 (Body):</span>
+                <pre class="result-panel" style="font-size:11px;max-height:150px;overflow-y:auto;margin-top:2px">${JSON.stringify(r.requestBody, null, 2)}</pre>
+              </div>
+            ` : ''}
+            ${(r.savingLog && r.savingLog.length > 0) ? `
+              <div style="font-size:12px;color:var(--gray-600);margin-top:4px">
+                <span style="font-weight:500">响应保存配置:</span>
+                <div style="margin-top:4px;background:#f6ffed;border:1px solid #b7eb8f;border-radius:4px;padding:6px 8px">
+                  ${r.savingLog.map(s => `
+                    <div style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:12px">
+                      <span style="color:var(--primary);font-weight:600">${s.cacheKey}</span>
+                      <span style="color:var(--gray-400)">=</span>
+                      <span style="color:#389e0d;font-weight:500">${s.value === null || s.value === undefined ? '(空)' : String(s.value)}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+          <div id="resp-${i}" style="display:none;margin-top:8px">
             <div style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:4px">响应内容</div>
             <pre class="result-panel" style="font-size:12px;max-height:300px;overflow-y:auto">${JSON.stringify(r.response, null, 2)}</pre>
           </div>
@@ -1498,6 +1738,95 @@ function showToast(msg, type='success') {
   toast.textContent = msg;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
+}
+
+let logEventSource = null;
+let logAutoScroll = true;
+
+function toggleLogModal() {
+  const modal = document.getElementById('log-modal');
+  if (modal.classList.contains('show')) {
+    closeLogModal();
+  } else {
+    openLogModal();
+  }
+}
+
+function openLogModal() {
+  const modal = document.getElementById('log-modal');
+  modal.classList.add('show');
+  startLogStream();
+}
+
+function closeLogModal() {
+  const modal = document.getElementById('log-modal');
+  modal.classList.remove('show');
+  stopLogStream();
+}
+
+function startLogStream() {
+  stopLogStream();
+  const content = document.getElementById('log-content');
+  content.innerHTML = '';
+  
+  logEventSource = new EventSource('/api/logs/stream');
+  
+  logEventSource.onmessage = function(e) {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.heartbeat) return;
+      if (data.line) {
+        appendLogLine(data.line);
+      }
+    } catch (err) {
+      // ignore
+    }
+  };
+  
+  logEventSource.onerror = function() {
+    setTimeout(() => {
+      if (logEventSource) {
+        startLogStream();
+      }
+    }, 2000);
+  };
+  
+  content.addEventListener('scroll', () => {
+    logAutoScroll = content.scrollTop + content.clientHeight >= content.scrollHeight - 20;
+  });
+}
+
+function stopLogStream() {
+  if (logEventSource) {
+    logEventSource.close();
+    logEventSource = null;
+  }
+}
+
+function appendLogLine(line) {
+  const content = document.getElementById('log-content');
+  const div = document.createElement('div');
+  div.style.cssText = 'margin:2px 0';
+  let colored = line;
+  if (line.includes(' - ERROR - ')) {
+    div.style.color = '#f48771';
+  } else if (line.includes(' - INFO - ')) {
+    div.style.color = '#d4d4d4';
+  } else if (line.includes(' - DEBUG - ')) {
+    div.style.color = '#808080';
+  }
+  div.textContent = line;
+  content.appendChild(div);
+  
+  if (logAutoScroll) {
+    content.scrollTop = content.scrollHeight;
+  }
+}
+
+function clearLogs() {
+  const content = document.getElementById('log-content');
+  content.innerHTML = '';
+  fetch('/api/logs/clear', { method: 'POST' });
 }
 
 init();

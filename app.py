@@ -22,14 +22,42 @@ import subprocess
 import time
 import uuid
 import csv
+import collections
 from datetime import datetime
+import logging
 
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, Response, stream_with_context
 from src.utils.logging_utils import setup_logger
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
 logger = setup_logger('api_test')
+
+_log_buffer = collections.deque(maxlen=500)
+_log_listeners = []
+
+
+class RealtimeLogHandler(logging.Handler):
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            _log_buffer.append(msg)
+            for q in list(_log_listeners):
+                try:
+                    q.append(msg)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+
+_realtime_handler = RealtimeLogHandler()
+_realtime_handler.setLevel(logging.INFO)
+_realtime_handler.setFormatter(logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(funcName)s - %(message)s',
+    datefmt='%H:%M:%S'
+))
+logger.addHandler(_realtime_handler)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -647,6 +675,85 @@ def run_case(case_id):
     return jsonify(result)
 
 
+@app.route('/api/cases/<case_id>/run/stream', methods=['POST'])
+def run_case_stream(case_id):
+    logger.info(f"开始执行用例(流式): {case_id}")
+    
+    @stream_with_context
+    def generate():
+        case = case_model.get_by_id(case_id)
+        if not case:
+            yield f"data: {json.dumps({'type': 'error', 'message': '用例不存在'})}\n\n"
+            return
+        
+        steps = case.get("steps", [])
+        total_steps = len(steps)
+        
+        yield f"data: {json.dumps({'type': 'start', 'totalSteps': total_steps, 'caseName': case.get('name', '')})}\n\n"
+        
+        temp_vars = {}
+        for idx, step in enumerate(steps):
+            api_id = step.get("apiId")
+            api_name = step.get("apiName", "")
+            variables = step.get("variables", {})
+            assertions = step.get("assertions", [])
+            
+            yield f"data: {json.dumps({'type': 'step_start', 'step': idx + 1, 'apiName': api_name, 'totalSteps': total_steps})}\n\n"
+            
+            try:
+                result = test_service.test_api(api_id, variables, assertions, write_cache=False, temp_vars=temp_vars)
+                
+                for log in result.get("savingLog", []):
+                    if log.get("value") is not None:
+                        temp_vars[log["cacheKey"]] = log["value"]
+                
+                step_result = {
+                    "step": idx + 1,
+                    "apiId": api_id,
+                    "apiName": api_name,
+                    "status": result["status"],
+                    "statusCode": result.get("statusCode", 0),
+                    "message": result.get("message", ""),
+                    "response": result.get("response", {}),
+                    "responseTime": result.get("responseTime", 0),
+                    "requestUrl": result.get("requestUrl", ""),
+                    "requestMethod": result.get("requestMethod", "POST"),
+                    "requestParams": result.get("requestParams", {}),
+                    "requestBody": result.get("requestBody", {}),
+                    "requestHeaders": result.get("requestHeaders", {}),
+                    "assertionResults": result.get("assertions", []),
+                    "allAssertionsPass": result.get("allAssertionsPass", True),
+                    "savingLog": result.get("savingLog", []),
+                    "bindingLog": result.get("bindingLog", [])
+                }
+                
+                yield f"data: {json.dumps({'type': 'step_result', 'step': idx + 1, 'result': step_result})}\n\n"
+                
+            except Exception as e:
+                step_result = {
+                    "step": idx + 1,
+                    "apiId": api_id,
+                    "apiName": api_name,
+                    "status": "error",
+                    "statusCode": 0,
+                    "message": str(e),
+                    "response": {},
+                    "requestUrl": "",
+                    "requestMethod": "POST",
+                    "requestParams": {},
+                    "requestBody": {},
+                    "requestHeaders": {},
+                    "assertionResults": [],
+                    "allAssertionsPass": True
+                }
+                
+                yield f"data: {json.dumps({'type': 'step_result', 'step': idx + 1, 'result': step_result})}\n\n"
+        
+        yield f"data: {json.dumps({'type': 'end'})}\n\n"
+    
+    return Response(generate(), mimetype='text/event-stream')
+
+
 @app.route('/api/configs', methods=['GET'])
 def get_all_configs():
     configs = config_model.get_all()
@@ -769,6 +876,37 @@ def refresh_token():
                 return jsonify({"success": False, "message": result.stderr})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
+
+
+@app.route('/api/logs/stream', methods=['GET'])
+def logs_stream():
+    @stream_with_context
+    def generate():
+        queue = collections.deque()
+        _log_listeners.append(queue)
+        try:
+            for line in _log_buffer:
+                yield f"data: {json.dumps({'line': line}, ensure_ascii=False)}\n\n"
+            while True:
+                if queue:
+                    line = queue.popleft()
+                    yield f"data: {json.dumps({'line': line}, ensure_ascii=False)}\n\n"
+                else:
+                    time.sleep(0.3)
+                    yield "data: " + json.dumps({"heartbeat": True}) + "\n\n"
+        except GeneratorExit:
+            pass
+        finally:
+            if queue in _log_listeners:
+                _log_listeners.remove(queue)
+
+    return Response(generate(), mimetype='text/event-stream')
+
+
+@app.route('/api/logs/clear', methods=['POST'])
+def clear_logs():
+    _log_buffer.clear()
+    return jsonify({"success": True})
 
 
 @app.route('/api/test-reports', methods=['GET'])

@@ -31,6 +31,7 @@ class ApiModel(BaseModel):
             "method": api_data.get("method", "POST"),
             "moduleId": api_data.get("moduleId", ""),
             "moduleName": api_data.get("moduleName", ""),
+            "preApiId": api_data.get("preApiId", ""),
             "headers": api_data.get("headers", {}),
             "params": api_data.get("params", {}),
             "body": api_data.get("body", {}),
