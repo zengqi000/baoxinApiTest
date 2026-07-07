@@ -223,6 +223,19 @@ class TestService:
             
             assertions = step_assertions if step_assertions else api.get("assertions", [])
             assertion_results = []
+            
+            assertion_results.append({
+                "field": "",
+                "responsePath": "",
+                "operator": "status_code",
+                "expected": "200-399",
+                "expectedValue": "200-399",
+                "actual": response.status_code,
+                "actualValue": response.status_code,
+                "passed": 200 <= response.status_code < 400,
+                "result": 200 <= response.status_code < 400
+            })
+            
             if assertions:
                 for assertion in assertions:
                     field = assertion.get("field", assertion.get("responsePath", ""))

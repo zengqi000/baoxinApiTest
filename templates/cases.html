@@ -166,8 +166,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   <nav>
     <a href="/"><div class="nav-icon">🔌</div><span>接口管理</span></a>
     <a href="/cases" class="active"><div class="nav-icon">📋</div><span>用例管理</span></a>
-    <a href="/runner"><div class="nav-icon">▶</div><span>测试执行</span></a>
-    <a href="/generator"><div class="nav-icon">⚡</div><span>代码生成</span></a>
   </nav>
 </div>
 
@@ -193,7 +191,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
       <div class="card-title">用例模块</div>
     </div>
     <div class="module-filter" id="case-module-filter">
-      <div class="filter-item active" onclick="filterCasesByModule('')">全部</div>
+      <div class="filter-item active" data-module-id="" onclick="filterCasesByModule('')">全部</div>
     </div>
   </div>
 
@@ -508,9 +506,9 @@ async function loadCaseModules() {
   caseModules = data.modules || [];
   
   const filter = document.getElementById('case-module-filter');
-  let html = '<div class="filter-item active" onclick="filterCasesByModule(\'\')">全部</div>';
+  let html = '<div class="filter-item active" data-module-id="">全部</div>';
   caseModules.forEach(m => {
-    html += `<div class="filter-item" onclick="filterCasesByModule('${m.id}')">${m.name}</div>`;
+    html += `<div class="filter-item" data-module-id="${m.id}" onclick="filterCasesByModule('${m.id}')">${m.name}</div>`;
   });
   filter.innerHTML = html;
   
@@ -1050,7 +1048,15 @@ function filterCasesByModule(moduleId) {
   
   const filterItems = document.querySelectorAll('#case-module-filter .filter-item');
   filterItems.forEach(item => item.classList.remove('active'));
-  event.target.classList.add('active');
+  
+  const filterDiv = document.getElementById('case-module-filter');
+  const children = filterDiv.children;
+  for (let i = 0; i < children.length; i++) {
+    if (children[i].getAttribute('data-module-id') === moduleId) {
+      children[i].classList.add('active');
+      break;
+    }
+  }
   
   filterCases();
 }
@@ -1132,9 +1138,19 @@ async function runSelectedCases() {
       const data = await res.json();
       
       if (data.success) {
-        successCount++;
         const caseResults = data.results || [];
         allResults.push(...caseResults);
+        
+        const casePassed = caseResults.every(r => {
+          const hasAssertions = r.assertionResults && r.assertionResults.length > 0;
+          return hasAssertions ? r.allAssertionsPass : (r.statusCode >= 200 && r.statusCode < 400);
+        });
+        
+        if (casePassed) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
         
         caseResults.forEach((r, idx) => {
           const hasAssertions = r.assertionResults && r.assertionResults.length > 0;
@@ -1244,7 +1260,7 @@ async function runSelectedCases() {
     document.getElementById('test-result-content').innerHTML = content;
     showModal('test-result-modal');
     
-    showToast(`批量执行完成：成功 ${successCount} 个，失败 ${errorCount} 个`);
+    showToast(`批量执行完成：成功 ${successCount} 个，失败 ${errorCount} 个`, errorCount > 0 ? 'error' : 'success');
     updateRunCount();
   } catch (e) {
     showToast('执行出错：' + e.message, 'error');
