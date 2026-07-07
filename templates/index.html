@@ -46,7 +46,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .card-title { font-size: 16px; font-weight: 600; }
 
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
 .stat-card { background: white; border-radius: 12px; border: 1px solid var(--gray-200); padding: 20px; }
 .stat-card .label { color: var(--gray-400); font-size: 13px; margin-bottom: 4px; }
 .stat-card .value { font-size: 28px; font-weight: 600; }
@@ -54,6 +54,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .stat-card .value.green { color: var(--success); }
 .stat-card .value.blue { color: var(--blue); }
 .stat-card .value.orange { color: var(--warning); }
+
+/* 日历样式 */
+.calendar-wrapper { padding: 12px; height: 100%; display: flex; flex-direction: column; }
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
+.calendar-title { font-size: 14px; font-weight: 600; color: var(--gray-900); }
+.calendar-nav { display: flex; gap: 4px; }
+.calendar-nav-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--gray-200); border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--gray-600); background: white; }
+.calendar-nav-btn:hover { border-color: var(--primary); color: var(--primary); }
+.calendar-today-btn { font-size: 11px; padding: 0 8px; height: 24px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; flex: 1; }
+.calendar-day-header { text-align: center; font-size: 11px; color: var(--gray-400); padding: 4px 0; font-weight: 500; }
+.calendar-day { text-align: center; padding: 4px 0; font-size: 12px; cursor: pointer; border-radius: 4px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; aspect-ratio: 1; }
+.calendar-day:hover { background: var(--gray-100); }
+.calendar-day.current-month { color: var(--gray-900); }
+.calendar-day.other-month { color: var(--gray-300); }
+.calendar-day.today { background: var(--primary); color: white; font-weight: 600; }
+.calendar-day.selected { background: var(--primary-light); color: var(--primary); }
+.calendar-day.sunday { color: var(--danger); }
+.calendar-day.current-month.sunday { color: var(--danger); }
+.calendar-day.other-month.sunday { color: var(--gray-300); }
+.calendar-lunar { font-size: 8px; margin-top: 1px; opacity: 0.7; }
 
 .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
 .tag-purple { background: var(--primary-bg); color: var(--primary); }
@@ -183,8 +204,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   <div class="stats">
     <div class="stat-card"><div class="label">业务模块</div><div class="value purple" id="stat-modules">0</div></div>
     <div class="stat-card"><div class="label">接口总数</div><div class="value blue" id="stat-apis">0</div></div>
-    <div class="stat-card"><div class="label">缓存字段</div><div class="value green" id="stat-cache">0</div></div>
-    <div class="stat-card"><div class="label">最近运行</div><div class="value orange" id="stat-last-run">-</div></div>
+    <div class="stat-card" style="padding:0">
+      <div id="calendar-container"></div>
+    </div>
   </div>
 
   <!-- 页面头部 -->
@@ -224,7 +246,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
           <span style="color:var(--primary)">⚙</span> 数据配置
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-outline btn-sm" onclick="resetConfigReferences()">初始化</button>
+          <button class="btn btn-outline btn-sm" onclick="resetConfigReferences()" style="display:none">初始化</button>
           <button class="btn btn-primary btn-sm" onclick="showCacheConfigModal()">+ 新增</button>
         </div>
       </div>
@@ -656,10 +678,93 @@ async function init() {
   await loadApis();
   await loadCache();
   await loadConfigs();
-  await loadEnvConfig();  // 页面加载时同步当前环境
+  await loadEnvConfig();
   updateStats();
   renderCacheConfig();
+  updateCalendar();
   
+}
+
+let calendarCurrentDate = new Date();
+let calendarSelectedDate = null;
+
+function updateCalendar() {
+  const container = document.getElementById('calendar-container');
+  if (!container) return;
+  
+  const year = calendarCurrentDate.getFullYear();
+  const month = calendarCurrentDate.getMonth();
+  
+  const today = new Date();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDay = firstDay.getDay();
+  const totalDays = lastDay.getDate();
+  
+  const prevMonthLastDay = new Date(year, month, 0).getDate();
+  const nextMonthStartDay = 42 - (startDay + totalDays);
+  
+  let html = '<div class="calendar-wrapper">';
+  
+  html += '<div class="calendar-header">';
+  html += '<div class="calendar-title">' + year + '年' + (month + 1) + '月</div>';
+  html += '<div class="calendar-nav">';
+  html += '<button class="calendar-nav-btn" onclick="changeMonth(-1)">‹</button>';
+  html += '<button class="calendar-nav-btn calendar-today-btn" onclick="goToToday()">今天</button>';
+  html += '<button class="calendar-nav-btn" onclick="changeMonth(1)">›</button>';
+  html += '</div>';
+  html += '</div>';
+  
+  html += '<div class="calendar-grid">';
+  const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+  for (let i = 0; i < 7; i++) {
+    html += '<div class="calendar-day-header">' + dayNames[i] + '</div>';
+  }
+  
+  for (let i = startDay - 1; i >= 0; i--) {
+    const day = prevMonthLastDay - i;
+    const isSunday = (startDay - 1 - i) % 7 === 0;
+    html += '<div class="calendar-day other-month' + (isSunday ? ' sunday' : '') + '">' + day + '</div>';
+  }
+  
+  for (let i = 1; i <= totalDays; i++) {
+    const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === i;
+    const isSunday = (startDay + i - 1) % 7 === 0;
+    const isSelected = calendarSelectedDate && calendarSelectedDate.getFullYear() === year && 
+                       calendarSelectedDate.getMonth() === month && calendarSelectedDate.getDate() === i;
+    
+    let classes = 'calendar-day current-month';
+    if (isToday) classes += ' today';
+    if (isSelected) classes += ' selected';
+    if (isSunday) classes += ' sunday';
+    
+    html += '<div class="' + classes + '" onclick="selectDate(' + year + ',' + month + ',' + i + ')">' + i + '</div>';
+  }
+  
+  for (let i = 1; i <= nextMonthStartDay; i++) {
+    const isSunday = (startDay + totalDays + i - 1) % 7 === 0;
+    html += '<div class="calendar-day other-month' + (isSunday ? ' sunday' : '') + '">' + i + '</div>';
+  }
+  
+  html += '</div></div>';
+  
+  container.innerHTML = html;
+}
+
+function changeMonth(delta) {
+  calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() + delta);
+  updateCalendar();
+}
+
+function goToToday() {
+  calendarCurrentDate = new Date();
+  calendarSelectedDate = null;
+  updateCalendar();
+}
+
+function selectDate(year, month, day) {
+  calendarSelectedDate = new Date(year, month, day);
+  updateCalendar();
 }
 
 // ==================== 数据缓存 ====================
@@ -681,7 +786,6 @@ async function loadCache() {
         }
       }
       countKeys(data.data);
-      document.getElementById('stat-cache').textContent = count;
       document.getElementById('cache-count-tag').textContent = count + ' 个字段';
     }
   } catch (e) {
@@ -766,6 +870,8 @@ async function runBaseDataApis() {
   btn.disabled = true;
   
   try {
+    await resetConfigReferences();
+    
     const now = new Date();
     const signDateEnd = now.toISOString().split('T')[0];
     const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
@@ -1128,17 +1234,12 @@ async function deleteCacheConfig(id) {
 }
 
 async function resetConfigReferences() {
-  if (!confirm('确定要初始化所有数据配置的引用状态吗？这将把所有"被引用"状态改为"否"。')) return;
-  
   const res = await fetch('/api/configs/reset-references', {method: 'POST'});
   const data = await res.json();
   
   if (data.success) {
-    showToast('初始化成功');
     await loadConfigs();
     renderCacheConfig();
-  } else {
-    showToast('初始化失败', 'error');
   }
 }
 
