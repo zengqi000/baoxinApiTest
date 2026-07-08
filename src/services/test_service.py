@@ -27,7 +27,9 @@ class TestService:
             return value
 
     def _resolve_string_placeholders(self, content, configs_data, cache_data):
-        if not isinstance(content, str):
+        # 记录原始类型，用于后续保持类型一致
+        original_is_string = isinstance(content, str)
+        if not original_is_string:
             content = json.dumps(content, ensure_ascii=False)
         
         resolved = set()
@@ -68,6 +70,10 @@ class TestService:
         
         if content.strip() in all_datas and content.strip() not in resolved:
             content = str(all_datas.get(content.strip(), ''))
+        
+        # 若原始输入是字符串，保持字符串类型返回，避免 json.loads 将 "2.0" 解析为浮点数
+        if original_is_string:
+            return content
         
         try:
             return json.loads(content)
@@ -138,7 +144,7 @@ class TestService:
         
         return exec_locals, saved_data
 
-    def test_api(self, api_id, variables=None, step_assertions=None, write_cache=True, temp_vars=None):
+    def test_api(self, api_id, variables=None, step_assertions=None, write_cache=True, temp_vars=None, pre_api_variables=None):
         api = self.api_model.get_by_id(api_id)
         if not api:
             return {"status": "error", "message": "接口不存在"}
@@ -147,6 +153,8 @@ class TestService:
             variables = {}
         if step_assertions is None:
             step_assertions = []
+        if pre_api_variables is None:
+            pre_api_variables = {}
         
         configs_data = self.config_model.get_all()
         temp_vars = temp_vars or {}
@@ -176,11 +184,12 @@ class TestService:
         
         pre_api_result = None
         pre_api_id = api.get("preApiId", "")
-        pre_api_variables = api.get("preApiVariables", {})
+        # 优先使用传入的 pre_api_variables，否则使用接口配置中的
+        pre_api_vars = pre_api_variables if pre_api_variables else api.get("preApiVariables", {})
         
         if pre_api_id:
-            logger.info(f"执行前置接口: {pre_api_id}")
-            pre_api_result = self.test_api(pre_api_id, pre_api_variables, [], write_cache, temp_vars)
+            logger.info(f"执行前置接口: {pre_api_id}, pre_api_vars={pre_api_vars}")
+            pre_api_result = self.test_api(pre_api_id, pre_api_vars, [], write_cache, temp_vars)
             
             http_success = 200 <= pre_api_result.get("statusCode", 0) < 400
             if http_success:
@@ -189,6 +198,7 @@ class TestService:
                         temp_vars[log["cacheKey"]] = log["value"]
                         cache_data["datas"][log["cacheKey"]] = log["value"]
                 logger.info(f"前置接口执行成功，更新temp_vars: {list(temp_vars.keys())}")
+                logger.info(f"前置接口执行成功，更新cache_data[datas]: {list(cache_data['datas'].keys())}")
             else:
                 logger.info(f"前置接口执行失败: {pre_api_result.get('message', '')}")
         
@@ -206,6 +216,7 @@ class TestService:
             headers.update(api_headers)
         
         headers = self.resolve_placeholders(headers, configs_data, cache_data)
+        headers = {k: str(v) for k, v in headers.items()}
         
         params = {}
         if api.get("params"):
@@ -216,6 +227,14 @@ class TestService:
             body = self.resolve_placeholders(api["body"], configs_data, cache_data)
         
         method = api.get("method", "POST").upper()
+        
+        # 打印实际发送的请求信息，用于调试比对
+        logger.info(f"===== 请求调试 =====")
+        logger.info(f"URL: {url}")
+        logger.info(f"Method: {method}")
+        logger.info(f"Headers: {json.dumps(headers, ensure_ascii=False)}")
+        logger.info(f"Body: {json.dumps(body, ensure_ascii=False)}")
+        logger.info(f"====================")
         
         try:
             
@@ -230,24 +249,34 @@ class TestService:
             else:
                 return {"status": "error", "message": f"不支持的HTTP方法: {method}"}
             
-            response_data = response.json()
+            try:
+                response_data = response.json()
+            except Exception:
+                response_data = {"_raw": response.text[:2000], "_contentType": response.headers.get("Content-Type", "")}
             logger.info(f"接口 {api['name']} 响应状态码: {response.status_code}")
             logger.info(f"接口 {api['name']} 响应数据: {json.dumps(response_data, ensure_ascii=False)[:500]}")
+            
+            logs = []
+            saving_log = []
+            binding_log = []
             
             script = api.get("script", "")
             script = self.resolve_placeholders(script, configs_data, cache_data)
             exec_locals, saved_data = self.execute_python_script(script, response_data, cache_data)
             
-            if saved_data and write_cache:
+            if saved_data:
                 for key, value in saved_data.items():
                     if not key.startswith("_"):
                         comment_key = f"_{key}_comment"
                         comment = saved_data.get(comment_key, "")
-                        self.cache_service.set_data(key, value, comment)
-            
-            logs = []
-            saving_log = []
-            binding_log = []
+                        if write_cache:
+                            self.cache_service.set_data(key, value, comment)
+                        saving_log.append({
+                            "responsePath": key,
+                            "cacheKey": key,
+                            "status": "已保存" if write_cache else "跳过",
+                            "value": value
+                        })
             
             if script:
                 logs.append(f"Python脚本 → {'已保存' if saved_data else '无数据'}")
@@ -326,19 +355,20 @@ class TestService:
                         passed = str(actual) != str(expected)
                     elif operator == "in" or operator == "contains":
                         if not field or field.strip() == "":
-                            def has_key(obj, key):
+                            def contains_value(obj, val):
                                 if isinstance(obj, dict):
-                                    if key in obj:
-                                        return True
                                     for v in obj.values():
-                                        if has_key(v, key):
+                                        if contains_value(v, val):
                                             return True
                                 elif isinstance(obj, list):
                                     for item in obj:
-                                        if has_key(item, key):
+                                        if contains_value(item, val):
                                             return True
+                                else:
+                                    if str(val) in str(obj):
+                                        return True
                                 return False
-                            passed = has_key(response_data, expected)
+                            passed = contains_value(response_data, expected)
                             actual = f"字段'{expected}'存在" if passed else f"字段'{expected}'不存在"
                         else:
                             actual = self.extract_value(response_data, field)

@@ -22,10 +22,12 @@ class CacheService:
             json.dump(self.data, f, ensure_ascii=False, indent=2)
 
     def get_datas(self):
-        return self.data.get("datas", {})
+        # 每次从文件实时读取，避免修改 data.json 后需重启服务才能生效
+        return self._load_data().get("datas", {})
 
     def get_headers(self):
-        return self.data.get("headers", {})
+        # 每次从文件实时读取，避免修改 data.json 后需重启服务才能生效
+        return self._load_data().get("headers", {})
 
     def set_data(self, key, value, comment=""):
         self.data["datas"][key] = value
@@ -36,7 +38,8 @@ class CacheService:
         print(f"当前 datas: {self.data['datas']}")
 
     def get_data(self, key):
-        return self.data["datas"].get(key)
+        # 每次从文件实时读取
+        return self._load_data()["datas"].get(key)
 
     def delete_data(self, key):
         if key in self.data["datas"]:
@@ -55,7 +58,8 @@ class CacheService:
         self._save_data()
 
     def get_header(self, key):
-        return self.data["headers"].get(key)
+        # 每次从文件实时读取
+        return self._load_data()["headers"].get(key)
 
     def update_cache(self, new_datas=None, new_headers=None):
         if new_datas:

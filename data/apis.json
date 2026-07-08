@@ -11,26 +11,26 @@
       "headers": {},
       "params": {},
       "body": {
+        "param": {
+          "search": "{{签约平台}}",
+          "userCode": "cengqi@itg.net",
+          "auth": "read",
+          "deptGroup": ""
+        },
+        "limit": 9999,
+        "offset": 0,
+        "showCount": true,
+        "__version__": "2.0",
+        "__sys__": {
+          "name": "",
+          "descName": "",
+          "msg": "",
+          "msgKey": "",
+          "detailMsg": "",
+          "status": 0,
+          "traceId": ""
+        },
         "__blocks__": {
-          "inqu_status": {
-            "attr": {},
-            "meta": {
-              "attr": {},
-              "columns": [
-                {
-                  "name": "search",
-                  "pos": 0,
-                  "type": "C"
-                }
-              ],
-              "desc": ""
-            },
-            "rows": [
-              [
-                "{{签约平台}}"
-              ]
-            ]
-          },
           "result": {
             "attr": {
               "limit": 9999,
@@ -38,33 +38,33 @@
               "showCount": true
             },
             "meta": {
+              "desc": "",
               "attr": {},
-              "columns": [],
-              "desc": ""
+              "columns": []
             },
             "rows": []
+          },
+          "inqu_status": {
+            "attr": {},
+            "meta": {
+              "desc": "",
+              "attr": {},
+              "columns": [
+                {
+                  "pos": 0,
+                  "name": "search",
+                  "type": "C"
+                }
+              ]
+            },
+            "rows": [
+              [
+                "{{签约平台}}"
+              ]
+            ]
           }
         },
-        "__context__": {},
-        "__sys__": {
-          "descName": "",
-          "detailMsg": "",
-          "msg": "",
-          "msgKey": "",
-          "name": "",
-          "status": 0,
-          "traceId": ""
-        },
-        "__version__": "2.0",
-        "limit": 9999,
-        "offset": 0,
-        "param": {
-          "auth": "read",
-          "deptGroup": "",
-          "search": "{{签约平台}}",
-          "userCode": "cengqi@itg.net"
-        },
-        "showCount": true
+        "__context__": {}
       },
       "description": "获取签约平台信息",
       "responseExample": "",
@@ -91,7 +91,9 @@
       "variables": "",
       "createdAt": "2026-07-03 14:07",
       "script": "",
-      "updatedAt": "2026-07-04 15:57"
+      "updatedAt": "2026-07-08 10:52",
+      "preApiId": "",
+      "preApiVariables": {}
     },
     {
       "id": "670a91c5",
@@ -847,33 +849,33 @@
       "headers": {},
       "params": {},
       "body": {
+        "__blocks__": {},
+        "__context__": {},
+        "__sys__": {
+          "descName": "",
+          "detailMsg": "",
+          "msg": "",
+          "msgKey": "",
+          "name": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__version__": "2.0",
+        "limit": 20,
+        "offset": 0,
         "param": {
+          "budgetContractNo": [],
+          "budgetContractOutNo": [],
           "creationDate": [
             "{{signDateStart}}",
             "{{signDateEnd}}"
           ],
-          "budgetContractNo": [],
-          "budgetContractOutNo": [],
-          "recCreator": [],
-          "creationDateStart": "{{signDateStart}}",
           "creationDateEnd": "{{signDateEnd}}",
+          "creationDateStart": "{{signDateStart}}",
+          "recCreator": [],
           "status": []
         },
-        "limit": 20,
-        "offset": 0,
-        "showCount": true,
-        "__version__": "2.0",
-        "__sys__": {
-          "name": "",
-          "descName": "",
-          "msg": "",
-          "msgKey": "",
-          "detailMsg": "",
-          "status": 0,
-          "traceId": ""
-        },
-        "__blocks__": {},
-        "__context__": {}
+        "showCount": true
       },
       "responseMapping": [],
       "paramBinding": [],
@@ -887,7 +889,54 @@
       "script": "",
       "variables": "",
       "createdAt": "2026-07-04 18:15",
-      "updatedAt": "2026-07-04 18:15"
+      "updatedAt": "2026-07-08 09:16",
+      "description": "",
+      "preApiId": "",
+      "preApiVariables": {}
+    },
+    {
+      "id": "be29664a",
+      "name": "采购合同详情",
+      "funcName": "get测试12",
+      "url": "/scbs/service/COCG004/queryMainDetailListByNo",
+      "method": "POST",
+      "moduleId": "9602524a",
+      "moduleName": "采购管理",
+      "preApiId": "0cbbce36",
+      "preApiVariables": {
+        "cgName": ""
+      },
+      "headers": {},
+      "params": {},
+      "body": {
+        "__blocks__": {},
+        "__context__": {},
+        "__sys__": {
+          "descName": "",
+          "detailMsg": "",
+          "msg": "",
+          "msgKey": "",
+          "name": "",
+          "status": 0,
+          "traceId": ""
+        },
+        "__version__": "2.0",
+        "data": "{{No}}"
+      },
+      "responseMapping": [],
+      "paramBinding": [],
+      "assertions": [
+        {
+          "comparator": "in",
+          "expected": "{{No}}",
+          "field": ""
+        }
+      ],
+      "script": "",
+      "variables": "",
+      "createdAt": "2026-07-08 09:59",
+      "updatedAt": "2026-07-08 11:44",
+      "description": ""
     }
   ]
 }

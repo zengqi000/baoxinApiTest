@@ -503,8 +503,9 @@ def test_single_api(api_id):
 def test_api_by_id(api_id):
     data = request.get_json()
     variables = data.get('variables', {}) if data else {}
+    pre_api_variables = data.get('preApiVariables', {}) if data else {}
     
-    result = test_service.test_api(api_id, variables, write_cache=False)
+    result = test_service.test_api(api_id, variables, write_cache=False, pre_api_variables=pre_api_variables)
     
     if result["status"] == "success":
         logger.info(f"接口测试成功: {api_id}")

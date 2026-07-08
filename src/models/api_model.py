@@ -37,7 +37,6 @@ class ApiModel(BaseModel):
             "params": api_data.get("params", {}),
             "body": api_data.get("body", {}),
             "responseMapping": api_data.get("responseMapping", []),
-            "paramBinding": api_data.get("paramBinding", []),
             "assertions": api_data.get("assertions", []),
             "script": api_data.get("script", ""),
             "variables": api_data.get("variables", ""),

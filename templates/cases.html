@@ -222,6 +222,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
         </td></tr>
       </tbody>
     </table>
+    <div id="case-pagination" class="pagination"></div>
   </div>
 </div>
 
@@ -377,6 +378,10 @@ let editingCaseId = null;
 let casesData = [];
 let apis = [];
 let steps = [];
+let currentCasePage = 1;
+let casePageSize = 10;
+let currentCaseModule = '';
+let filteredCases = [];
 let caseModules = [];
 let apiModules = [];
 let currentModuleFilter = '';
@@ -551,7 +556,9 @@ async function loadCaseModules() {
   select.innerHTML = selectHtml;
 }
 
-async function loadCases() {
+async function loadCases(page) {
+  if (page) currentCasePage = page;
+  
   const res = await fetch('/api/cases');
   const data = await res.json();
   casesData = data.cases || [];
@@ -569,36 +576,53 @@ async function loadCases() {
   const cacheFields = Object.keys(cacheDataResult || {}).filter(k => !k.startsWith('_') && !k.endsWith('_comment'));
   document.getElementById('stat-cache').textContent = cacheFields.length;
   
-  if (casesData.length === 0) {
-    document.getElementById('case-list').innerHTML = `
-      <tr><td colspan="7">
-        <div class="empty-state">
-          <div class="icon">📋</div>
-          <div class="title">还没有测试用例</div>
-          <div class="desc">点击"新增用例"按钮创建你的第一个测试用例</div>
-        </div>
-      </td></tr>
-    `;
-    return;
+  renderCaseList();
+}
+
+function renderCasePagination(current, total, totalCount) {
+  const pagination = document.getElementById('case-pagination');
+  if (!pagination) return;
+
+  pagination.style.display = 'flex';
+  pagination.style.justifyContent = 'flex-end';
+  pagination.style.alignItems = 'center';
+  pagination.style.gap = '12px';
+  pagination.style.padding = '12px 16px';
+  pagination.style.fontSize = '14px';
+  pagination.style.color = 'var(--gray-600)';
+
+  let html = '';
+
+  html += '<span>总条数：' + (totalCount || 0) + '</span>';
+  html += '<button class="pagination-btn" onclick="loadCases(' + (current - 1) + ')" ' + (current === 1 ? 'disabled' : '') + '>上一页</button>';
+  html += '<span>第 ' + current + '/' + total + ' 页</span>';
+  html += '<button class="pagination-btn" onclick="loadCases(' + (current + 1) + ')" ' + (current === total ? 'disabled' : '') + '>下一页</button>';
+  html += '<select onchange="changeCasePageSize(this.value)" style="padding:6px 10px;border:1px solid var(--gray-200);border-radius:6px;background:white;cursor:pointer;font-size:14px">';
+  [10, 20, 50, 100].forEach(s => {
+    html += '<option value="' + s + '" ' + (casePageSize === s ? 'selected' : '') + '>' + s + ' 条/页</option>';
+  });
+  html += '</select>';
+  html += '<span>跳至</span>';
+  html += '<input type="number" id="case-jump-page-input" min="1" max="' + total + '" style="width:60px;padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:14px;text-align:center">';
+  html += '<span>页</span>';
+  html += '<button class="pagination-btn" onclick="jumpToCasePage()">跳转</button>';
+
+  pagination.innerHTML = html;
+}
+
+function changeCasePageSize(size) {
+  casePageSize = parseInt(size);
+  currentCasePage = 1;
+  loadCases();
+}
+
+function jumpToCasePage() {
+  const input = document.getElementById('case-jump-page-input');
+  if (!input) return;
+  const page = parseInt(input.value);
+  if (page && page >= 1) {
+    loadCases(page);
   }
-  
-  document.getElementById('case-list').innerHTML = casesData.map(c => {
-    const stepCount = c.steps ? c.steps.length : 1;
-    const module = caseModules.find(m => m.id === c.moduleId);
-    return `
-    <tr>
-      <td><input type="checkbox" class="case-checkbox" value="${c.id}"></td>
-      <td style="font-weight:500;cursor:pointer" ondblclick="viewCaseDetail('${c.id}')">${c.name}</td>
-      <td>${module ? `<span class="tag tag-purple" style="cursor:pointer" ondblclick="editCaseModule('${module.id}')">${module.name}</span>` : '-'}</td>
-      <td><span class="tag tag-blue">${stepCount} 步</span></td>
-      <td>${c.createdAt || '-'}</td>
-      <td class="actions">
-        <button class="btn btn-outline btn-sm" onclick="editCase('${c.id}')">编辑</button>
-        <button class="btn btn-primary btn-sm" onclick="runCase('${c.id}')">执行</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteCase('${c.id}')">删除</button>
-      </td>
-    </tr>
-  `}).join('');
 }
 
 function showAddCaseModal() {
@@ -1267,7 +1291,8 @@ function getOperatorText(operator) {
 }
 
 function filterCasesByModule(moduleId) {
-  currentModuleFilter = moduleId;
+  currentCaseModule = moduleId;
+  currentCasePage = 1;
   
   const filterItems = document.querySelectorAll('#case-module-filter .filter-item');
   filterItems.forEach(item => item.classList.remove('active'));
@@ -1281,47 +1306,7 @@ function filterCasesByModule(moduleId) {
     }
   }
   
-  filterCases();
-}
-
-function filterCases() {
-  const searchText = document.getElementById('case-search').value.toLowerCase();
-  const filtered = casesData.filter(c => {
-    const matchSearch = c.name.toLowerCase().includes(searchText);
-    const matchModule = !currentModuleFilter || c.moduleId === currentModuleFilter;
-    return matchSearch && matchModule;
-  });
-  
-  if (filtered.length === 0) {
-    document.getElementById('case-list').innerHTML = `
-      <tr><td colspan="7">
-        <div class="empty-state">
-          <div class="icon">📋</div>
-          <div class="title">没有找到匹配的用例</div>
-          <div class="desc">尝试调整筛选条件</div>
-        </div>
-      </td></tr>
-    `;
-    return;
-  }
-  
-  document.getElementById('case-list').innerHTML = filtered.map(c => {
-    const stepCount = c.steps ? c.steps.length : 1;
-    const module = caseModules.find(m => m.id === c.moduleId);
-    return `
-    <tr>
-      <td><input type="checkbox" class="case-checkbox" value="${c.id}"></td>
-      <td style="font-weight:500;cursor:pointer" ondblclick="viewCaseDetail('${c.id}')">${c.name}</td>
-      <td>${module ? `<span class="tag tag-purple" style="cursor:pointer" ondblclick="editCaseModule('${module.id}')">${module.name}</span>` : '-'}</td>
-      <td><span class="tag tag-blue">${stepCount} 步</span></td>
-      <td>${c.createdAt || '-'}</td>
-      <td class="actions">
-        <button class="btn btn-outline btn-sm" onclick="editCase('${c.id}')">编辑</button>
-        <button class="btn btn-primary btn-sm" onclick="runCase('${c.id}')">执行</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteCase('${c.id}')">删除</button>
-      </td>
-    </tr>
-  `}).join('');
+  loadCases();
 }
 
 function toggleSelectAll(checkbox) {
@@ -1744,13 +1729,62 @@ function toggleResponse(id) {
   }
 }
 
+let caseSearchKeyword = '';
+
 function filterCases() {
-  const keyword = document.getElementById('case-search').value.toLowerCase();
-  const rows = document.querySelectorAll('#case-list tr');
-  rows.forEach(row => {
-    const text = row.textContent.toLowerCase();
-    row.style.display = text.includes(keyword) ? '' : 'none';
+  caseSearchKeyword = document.getElementById('case-search').value.toLowerCase();
+  currentCasePage = 1;
+  renderCaseList();
+}
+
+function renderCaseList() {
+  const filtered = casesData.filter(c => {
+    const matchSearch = !caseSearchKeyword || c.name.toLowerCase().includes(caseSearchKeyword);
+    const matchModule = !currentCaseModule || c.moduleId === currentCaseModule;
+    return matchSearch && matchModule;
   });
+  
+  filteredCases = filtered;
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / casePageSize);
+  if (currentCasePage > totalPages && totalPages > 0) currentCasePage = totalPages;
+  const start = (currentCasePage - 1) * casePageSize;
+  const end = start + casePageSize;
+  const pageCases = filtered.slice(start, end);
+  
+  if (filtered.length === 0) {
+    document.getElementById('case-list').innerHTML = `
+      <tr><td colspan="6">
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <div class="title">${caseSearchKeyword ? '没有找到匹配的用例' : (currentCaseModule ? '该模块暂无测试用例' : '还没有测试用例')}</div>
+          <div class="desc">${caseSearchKeyword ? '尝试调整搜索条件' : '点击"新增用例"按钮创建你的第一个测试用例'}</div>
+        </div>
+      </td></tr>
+    `;
+    renderCasePagination(1, 1, 0);
+    return;
+  }
+  
+  document.getElementById('case-list').innerHTML = pageCases.map(c => {
+    const stepCount = c.steps ? c.steps.length : 1;
+    const module = caseModules.find(m => m.id === c.moduleId);
+    return `
+    <tr>
+      <td><input type="checkbox" class="case-checkbox" value="${c.id}"></td>
+      <td style="font-weight:500;cursor:pointer" ondblclick="viewCaseDetail('${c.id}')">${c.name}</td>
+      <td>${module ? `<span class="tag tag-purple" style="cursor:pointer" ondblclick="editCaseModule('${module.id}')">${module.name}</span>` : '-'}</td>
+      <td><span class="tag tag-blue">${stepCount} 步</span></td>
+      <td>${c.createdAt || '-'}</td>
+      <td class="actions">
+        <button class="btn btn-outline btn-sm" onclick="editCase('${c.id}')">编辑</button>
+        <button class="btn btn-primary btn-sm" onclick="runCase('${c.id}')">执行</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCase('${c.id}')">删除</button>
+      </td>
+    </tr>
+  `}).join('');
+  
+  renderCasePagination(currentCasePage, totalPages || 1, total);
 }
 
 function showModal(id, allowOverlayClose = true) {
