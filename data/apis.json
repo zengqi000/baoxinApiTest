@@ -424,6 +424,11 @@
           "cacheKey": "uuid",
           "comment": "采购合同uuid",
           "responsePath": "result.records[0].uuid"
+        },
+        {
+          "cacheKey": "res",
+          "comment": "接口返回值",
+          "responsePath": "result"
         }
       ],
       "paramBinding": [],
@@ -436,9 +441,11 @@
       ],
       "script": "",
       "createdAt": "2026-07-04 15:47",
-      "updatedAt": "2026-07-04 16:35",
+      "updatedAt": "2026-07-07 19:29",
       "description": "采购合同列表页面，根据采购合同号查询接口",
-      "variables": "cgName"
+      "variables": "cgName",
+      "preApiId": "",
+      "preApiVariables": {}
     },
     {
       "id": "3b0d6f85",
@@ -836,7 +843,7 @@
       "url": "/scbs/service/COBC002/queryBudgetContractReportDetails",
       "method": "POST",
       "moduleId": "57e7365a",
-      "moduleName": "",
+      "moduleName": "进销存查询接口",
       "headers": {},
       "params": {},
       "body": {

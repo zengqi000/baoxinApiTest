@@ -383,6 +383,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
         <div class="custom-select-dropdown" id="pre-api-dropdown"></div>
       </div>
       <div class="hint">选择前置接口后，执行该接口前会自动先执行前置接口</div>
+      <div id="pre-api-response-mapping" style="margin-top:8px;display:none"></div>
+      <div id="pre-api-variables" style="margin-top:8px;display:none"></div>
     </div>
 
     <div class="form-group">
@@ -438,7 +440,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
         <span class="hint" style="font-size:12px;color:var(--gray-400)">先执行脚本处理响应数据，获取的值可用于响应保存配置的缓存键名</span>
       </div>
       <textarea id="api-script" rows="4" placeholder="" style="width:100%;padding:8px;font-family:monospace;font-size:12px;border:1px solid var(--gray-300);border-radius:6px;background:#1a1a2e;color:#e0e0e0;resize:vertical"></textarea>
-      <div style="font-size:11px;color:var(--gray-400);margin-top:4px">可用变量：response(响应数据), save(key, value, comment)(保存到缓存), cache(当前缓存数据)</div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:4px">可用变量：response(响应数据), 直接赋值变量(如name=xxx可在响应保存配置中引用), save(key, value, comment)(保存到缓存), cache(当前缓存数据), {{变量名}}(引用缓存值)</div>
       
       <div style="margin-top:8px">
         <div style="font-size:11px;color:var(--gray-500);margin-bottom:4px">💡 示例脚本（点击复制）：</div>
@@ -491,6 +493,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
     <button class="close-btn" onclick="closeModal('test-result-modal')">x</button>
     <h2>接口测试结果</h2>
     <div id="test-result-content" style="margin-bottom:16px"></div>
+
+    <!-- ★ 前置接口结果 -->
+    <div id="pre-api-section" style="display:none;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:600;color:var(--purple);margin-bottom:8px">🔗 前置接口执行结果</div>
+      <div class="card" style="padding:12px;border-left:4px solid var(--purple)">
+        <div id="pre-api-info"></div>
+      </div>
+    </div>
 
     <!-- 请求信息 -->
     <div class="card" style="margin-bottom:16px">
@@ -1461,9 +1471,9 @@ async function copyApi(id) {
 
 const scriptExamples = [
   `for item in response.get('data', []):
-    if item.get('name') == '{{签约平台}}':
-        save('orgCode', item.get('code'))
-        save('orgName', item.get('name'))`,
+    if item.get('className') == '{{产品组}}':
+        name=item.get('className')
+        code=item.get('classCode')`,
   `save('total', response.get('result', {}).get('total', 0))`,
   `for i, item in enumerate(response.get('list', [])):
     save('item_' + str(i) + '_name', item.get('name'))`
@@ -1479,6 +1489,61 @@ function initPreApiSelect() {
   if (!container) return;
   const input = document.getElementById('pre-api-input');
   const dropdown = document.getElementById('pre-api-dropdown');
+
+  function renderPreApiInfo(apiId, savedVars) {
+    const mappingContainer = document.getElementById('pre-api-response-mapping');
+    const varsContainer = document.getElementById('pre-api-variables');
+    if (!mappingContainer || !varsContainer) return;
+    const api = allApis.find(a => a.id === apiId);
+
+    // Render response mapping
+    const mappings = api && api.responseMapping ? api.responseMapping : [];
+    if (mappings.length === 0) {
+      mappingContainer.style.display = 'none';
+      mappingContainer.innerHTML = '';
+    } else {
+      let html = '<div style="font-size:12px;color:var(--gray-400);margin-bottom:6px">前置接口响应保存配置（可在本接口中引用）：</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+      mappings.forEach(m => {
+        const comment = m.comment || m.cacheKey;
+        html += '<div style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--primary-bg);border-radius:6px;font-size:13px;color:var(--primary)">' +
+          '<span style="font-weight:500">' + comment + '</span>' +
+          '<span style="color:var(--gray-400)">：</span>' +
+          '<span style="font-family:monospace">' + m.cacheKey + '</span>' +
+          '</div>';
+      });
+      html += '</div>';
+      mappingContainer.innerHTML = html;
+      mappingContainer.style.display = 'block';
+    }
+
+    // Render variable inputs
+    const varList = api && api.variables ? api.variables.split(/[,，]/).map(v => v.trim()).filter(v => v) : [];
+    if (varList.length === 0) {
+      varsContainer.style.display = 'none';
+      varsContainer.innerHTML = '';
+    } else {
+      let html = '<div style="font-size:12px;color:var(--gray-400);margin-bottom:6px">前置接口变量值：</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:10px">';
+      varList.forEach(v => {
+        const val = savedVars && savedVars[v] ? savedVars[v] : '';
+        html += '<div style="flex:1;min-width:140px">' +
+          '<label style="font-size:12px;color:var(--gray-600);display:block;margin-bottom:4px">' + v + '</label>' +
+          '<input type="text" class="pre-api-var-input" data-var-name="' + v + '" value="' + val + '" placeholder="请输入' + v + '" style="width:100%;padding:6px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px">' +
+          '</div>';
+      });
+      html += '</div>';
+      varsContainer.innerHTML = html;
+      varsContainer.style.display = 'block';
+    }
+  }
+
+  function clearPreApiInfo() {
+    const mappingContainer = document.getElementById('pre-api-response-mapping');
+    const varsContainer = document.getElementById('pre-api-variables');
+    if (mappingContainer) { mappingContainer.style.display = 'none'; mappingContainer.innerHTML = ''; }
+    if (varsContainer) { varsContainer.style.display = 'none'; varsContainer.innerHTML = ''; }
+  }
 
   function renderOptions(selectedId) {
     let html = '';
@@ -1499,23 +1564,38 @@ function initPreApiSelect() {
     const selectedApi = allApis.find(a => a.id === selectedId);
     input.value = selectedApi ? selectedApi.name : '';
     input.dataset.selectedId = selectedId || '';
+    if (selectedId) {
+      renderPreApiInfo(selectedId, {});
+    } else {
+      clearPreApiInfo();
+    }
   }
 
   function filterOptions() {
     const keyword = input.value.toLowerCase().trim();
-    const options = dropdown.querySelectorAll('.custom-select-option');
-    let hasVisible = false;
-    options.forEach(opt => {
-      const text = opt.dataset.text.toLowerCase();
+    const list = editingApiId ? allApis.filter(a => a.id !== editingApiId) : allApis;
+    let html = '';
+    let hasMatch = false;
+    
+    list.forEach(api => {
+      const moduleName = api.moduleName || '';
+      const text = (api.name + ' ' + moduleName).toLowerCase();
       if (keyword === '' || text.includes(keyword)) {
-        opt.style.display = '';
-        hasVisible = true;
-      } else {
-        opt.style.display = 'none';
+        hasMatch = true;
+        const isSelected = api.id === input.dataset.selectedId;
+        html += '<div class="custom-select-option' + (isSelected ? ' selected' : '') + '" data-value="' + api.id + '" data-text="' + (api.name + (moduleName ? ' ' + moduleName : '')) + '">' +
+          '<span>' + api.name + '</span>' +
+          (moduleName ? '<span class="module-tag">' + moduleName + '</span>' : '') +
+          '</div>';
       }
     });
-    if (!hasVisible && keyword !== '') {
+    
+    if (hasMatch) {
+      dropdown.innerHTML = html;
+    } else if (keyword !== '') {
       dropdown.innerHTML = '<div class="custom-select-empty">没有找到匹配的接口</div>';
+    } else {
+      dropdown.innerHTML = '<div class="custom-select-empty">暂无接口数据</div>';
     }
   }
 
@@ -1545,6 +1625,7 @@ function initPreApiSelect() {
     const selectedName = selectedApi ? selectedApi.name : '';
     if (input.value !== selectedName) {
       input.dataset.selectedId = '';
+      clearPreApiInfo();
     }
     showDropdown();
     filterOptions();
@@ -1561,11 +1642,13 @@ function initPreApiSelect() {
       dropdown.querySelectorAll('.custom-select-option').forEach(opt => opt.classList.remove('selected'));
       option.classList.add('selected');
       hideDropdown();
+      renderPreApiInfo(apiId, {});
     }
   });
 
-  // Store render function globally for reuse
+  // Store render functions globally for reuse
   window.renderPreApiOptions = renderOptions;
+  window.renderPreApiInfo = renderPreApiInfo;
 }
 
 function setupGlobalClickHandler() {
@@ -1623,6 +1706,9 @@ async function showEditApiModal(id) {
   document.getElementById('api-params').value = api.params ? JSON.stringify(api.params, null, 2) : '';
   document.getElementById('api-script').value = api.script || '';
   if (window.renderPreApiOptions) window.renderPreApiOptions(api.preApiId || '');
+  if (api.preApiId && window.renderPreApiInfo) {
+    window.renderPreApiInfo(api.preApiId, api.preApiVariables || {});
+  }
   selectMethod(api.method || 'POST');
   assertions = api.assertions || [];
   responseMappings = api.responseMapping || [];
@@ -1650,6 +1736,11 @@ async function saveApi() {
 
   const script = document.getElementById('api-script').value.trim();
   const preApiId = document.getElementById('pre-api-input').dataset.selectedId || '';
+  const preApiVariables = {};
+  document.querySelectorAll('.pre-api-var-input').forEach(el => {
+    const varName = el.dataset.varName;
+    if (varName) preApiVariables[varName] = el.value.trim();
+  });
   const payload = {
     name, funcName, moduleId, url, method: currentMethod,
     description: desc, headers: {}, params, body, assertions,
@@ -1657,7 +1748,8 @@ async function saveApi() {
     paramBinding: paramBindings,
     variables,
     script,
-    preApiId
+    preApiId,
+    preApiVariables
   };
 
   if (editingApiId) {
@@ -1799,6 +1891,44 @@ async function quickTestApi(id) {
       </div>
     `;
 
+    // ★ 显示前置接口结果
+    const preApiSection = document.getElementById('pre-api-section');
+    const preApiInfo = document.getElementById('pre-api-info');
+    if (data.preApiResult) {
+      preApiSection.style.display = 'block';
+      const preResult = data.preApiResult;
+      const preStatus = preResult.status === 'success' ? 'green' : 'red';
+      const preStatusText = preResult.status === 'success' ? '执行成功' : '执行失败';
+      let preSavingLogHtml = '';
+      if (preResult.savingLog && preResult.savingLog.length > 0) {
+        preSavingLogHtml = `<div style="margin-top:8px">
+          <div style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:4px">→ 响应保存（写入缓存）</div>
+          ${preResult.savingLog.map(s => `
+            <div class="flow-log-item">
+              <span class="arrow">→</span>
+              <span style="color:var(--gray-400)">${s.responsePath}</span>
+              <span style="color:var(--gray-400)">→</span>
+              <span style="color:var(--teal)">${s.cacheKey}</span>
+              <span class="tag tag-${s.status === '已保存' ? 'green' : 'red'}">${s.status}</span>
+              ${s.value !== null ? `<span style="color:var(--gray-400)">= ${JSON.stringify(s.value)}</span>` : ''}
+            </div>
+          `).join('')}
+        </div>`;
+      }
+      preApiInfo.innerHTML = `
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+          <span class="tag tag-${preStatus}" style="font-size:12px">${preStatusText}</span>
+          <span style="font-size:13px;font-weight:500;color:var(--gray-700)">${preResult.requestMethod || 'GET'} ${preResult.requestUrl || ''}</span>
+          ${preResult.responseTime ? `<span style="font-size:12px;color:var(--gray-400)">响应时间: ${preResult.responseTime}ms</span>` : ''}
+        </div>
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">响应内容</div>
+        <div class="json-editor" style="min-height:60px;font-size:12px">${JSON.stringify(preResult.response, null, 2)}</div>
+        ${preSavingLogHtml}
+      `;
+    } else {
+      preApiSection.style.display = 'none';
+    }
+
     // ★ 显示请求信息
     const requestDisplay = document.getElementById('request-info-display');
     const methodClass = data.method === 'GET' ? 'blue' : data.method === 'POST' ? 'green' : data.method === 'PUT' ? 'orange' : 'red';
@@ -1908,6 +2038,44 @@ async function quickTestApi(id) {
         ${data.responseTime ? `<span style="color:var(--gray-600)">响应时间: <strong style="color:var(--primary)">${data.responseTime}ms</strong></span>` : ''}
       </div>
     `;
+
+    // ★ 显示前置接口结果（错误分支）
+    const preApiSection = document.getElementById('pre-api-section');
+    const preApiInfo = document.getElementById('pre-api-info');
+    if (data.preApiResult) {
+      preApiSection.style.display = 'block';
+      const preResult = data.preApiResult;
+      const preStatus = preResult.status === 'success' ? 'green' : 'red';
+      const preStatusText = preResult.status === 'success' ? '执行成功' : '执行失败';
+      let preSavingLogHtml = '';
+      if (preResult.savingLog && preResult.savingLog.length > 0) {
+        preSavingLogHtml = `<div style="margin-top:8px">
+          <div style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:4px">→ 响应保存（写入缓存）</div>
+          ${preResult.savingLog.map(s => `
+            <div class="flow-log-item">
+              <span class="arrow">→</span>
+              <span style="color:var(--gray-400)">${s.responsePath}</span>
+              <span style="color:var(--gray-400)">→</span>
+              <span style="color:var(--teal)">${s.cacheKey}</span>
+              <span class="tag tag-${s.status === '已保存' ? 'green' : 'red'}">${s.status}</span>
+              ${s.value !== null ? `<span style="color:var(--gray-400)">= ${JSON.stringify(s.value)}</span>` : ''}
+            </div>
+          `).join('')}
+        </div>`;
+      }
+      preApiInfo.innerHTML = `
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+          <span class="tag tag-${preStatus}" style="font-size:12px">${preStatusText}</span>
+          <span style="font-size:13px;font-weight:500;color:var(--gray-700)">${preResult.requestMethod || 'GET'} ${preResult.requestUrl || ''}</span>
+          ${preResult.responseTime ? `<span style="font-size:12px;color:var(--gray-400)">响应时间: ${preResult.responseTime}ms</span>` : ''}
+        </div>
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">响应内容</div>
+        <div class="json-editor" style="min-height:60px;font-size:12px">${JSON.stringify(preResult.response, null, 2)}</div>
+        ${preSavingLogHtml}
+      `;
+    } else {
+      preApiSection.style.display = 'none';
+    }
 
     document.getElementById('request-info-display').innerHTML = `
       <div style="margin-bottom:12px">

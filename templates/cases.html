@@ -191,7 +191,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
       <div class="card-title">用例模块</div>
     </div>
     <div class="module-filter" id="case-module-filter">
-      <div class="filter-item active" data-module-id="" onclick="filterCasesByModule('')">全部</div>
     </div>
   </div>
 
@@ -205,11 +204,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
     <table class="table">
       <thead>
         <tr>
-          <th style="width:40px"><input type="checkbox" onchange="toggleSelectAll(this)">全选</th>
+          <th style="width:40px"><input type="checkbox" onchange="toggleSelectAll(this)"></th>
           <th>用例名称</th>
           <th>所属模块</th>
           <th>步骤数</th>
-          <th>描述</th>
           <th>创建时间</th>
           <th>操作</th>
         </tr>
@@ -247,8 +245,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
     </div>
     
     <div class="form-group">
-      <label>用例描述</label>
-      <textarea id="case-desc" placeholder="描述该用例的测试场景..." rows="2"></textarea>
+      <label>临时变量</label>
+      <textarea id="case-desc" placeholder="" rows="3" style="width:100%;padding:8px;font-family:monospace;font-size:12px;border:1px solid var(--gray-300);border-radius:6px;background:#1a1a2e;color:#e0e0e0;resize:vertical"></textarea>
     </div>
 
     <div class="section-divider">
@@ -539,7 +537,7 @@ async function loadCaseModules() {
   caseModules = data.modules || [];
   
   const filter = document.getElementById('case-module-filter');
-  let html = '<div class="filter-item active" data-module-id="">全部</div>';
+  let html = '';
   caseModules.forEach(m => {
     html += `<div class="filter-item" data-module-id="${m.id}" onclick="filterCasesByModule('${m.id}')">${m.name}</div>`;
   });
@@ -590,10 +588,9 @@ async function loadCases() {
     return `
     <tr>
       <td><input type="checkbox" class="case-checkbox" value="${c.id}"></td>
-      <td style="font-weight:500">${c.name}</td>
-      <td>${module ? `<span class="tag tag-purple">${module.name}</span>` : '-'}</td>
+      <td style="font-weight:500;cursor:pointer" ondblclick="viewCaseDetail('${c.id}')">${c.name}</td>
+      <td>${module ? `<span class="tag tag-purple" style="cursor:pointer" ondblclick="editCaseModule('${module.id}')">${module.name}</span>` : '-'}</td>
       <td><span class="tag tag-blue">${stepCount} 步</span></td>
-      <td>${c.description || '-'}</td>
       <td>${c.createdAt || '-'}</td>
       <td class="actions">
         <button class="btn btn-outline btn-sm" onclick="editCase('${c.id}')">编辑</button>
@@ -1314,10 +1311,9 @@ function filterCases() {
     return `
     <tr>
       <td><input type="checkbox" class="case-checkbox" value="${c.id}"></td>
-      <td style="font-weight:500">${c.name}</td>
-      <td>${module ? `<span class="tag tag-purple">${module.name}</span>` : '-'}</td>
+      <td style="font-weight:500;cursor:pointer" ondblclick="viewCaseDetail('${c.id}')">${c.name}</td>
+      <td>${module ? `<span class="tag tag-purple" style="cursor:pointer" ondblclick="editCaseModule('${module.id}')">${module.name}</span>` : '-'}</td>
       <td><span class="tag tag-blue">${stepCount} 步</span></td>
-      <td>${c.description || '-'}</td>
       <td>${c.createdAt || '-'}</td>
       <td class="actions">
         <button class="btn btn-outline btn-sm" onclick="editCase('${c.id}')">编辑</button>
@@ -1648,26 +1644,91 @@ function showAddModuleModal() {
   showModal('case-module-modal', false);
 }
 
+async function editCaseModule(id) {
+  const module = caseModules.find(m => m.id === id);
+  if (!module) return;
+  
+  document.getElementById('case-module-modal-title').textContent = '编辑用例模块';
+  document.getElementById('case-module-name').value = module.name || '';
+  document.getElementById('case-module-desc').value = module.description || '';
+  
+  editingModuleId = id;
+  showModal('case-module-modal', false);
+}
+
+async function viewCaseDetail(id) {
+  const c = casesData.find(item => item.id === id);
+  if (!c) return;
+  
+  editingCaseId = id;
+  document.getElementById('case-modal-title').textContent = '用例详情';
+  document.getElementById('case-name').value = c.name || '';
+  document.getElementById('case-module').value = c.moduleId || '';
+  document.getElementById('case-desc').value = c.description || '';
+  
+  if (c.steps) {
+    steps = c.steps.map(s => ({...s, variables: Object.entries(s.variables || {}).map(([name, value]) => ({name, value})), assertions: s.assertions || []}));
+  } else {
+    steps = [{apiId: c.apiId || '', apiName: c.apiName || '', variables: Object.entries(c.variables || {}).map(([name, value]) => ({name, value})), assertions: []}];
+  }
+  
+  for (const step of steps) {
+    if (step.apiId) {
+      const apiRes = await fetch(`/api/apis/${step.apiId}`);
+      const apiData = await apiRes.json();
+      const apiInfo = apiData.api || apiData;
+      
+      if (apiInfo.variables) {
+        const varsStr = apiInfo.variables.replace(/[()（）]/g, '');
+        const varList = varsStr.split(/[,，]/).map(v => v.trim()).filter(v => v);
+        
+        const existingVars = step.variables || [];
+        const existingMap = {};
+        existingVars.forEach(v => { existingMap[v.name] = v.value; });
+        
+        varList.forEach(v => {
+          if (!existingMap[v]) {
+            step.variables.push({name: v, value: ''});
+          }
+        });
+      }
+    }
+  }
+  
+  renderSteps();
+  showModal('case-modal', false);
+}
+
 async function saveCaseModule() {
   const name = document.getElementById('case-module-name').value.trim();
   const desc = document.getElementById('case-module-desc').value.trim();
   
   if (!name) { showToast('请输入模块名称', 'error'); return; }
   
-  const res = await fetch('/api/case-modules', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({name, description: desc})
-  });
+  let res;
+  if (editingModuleId) {
+    res = await fetch(`/api/case-modules/${editingModuleId}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, description: desc})
+    });
+  } else {
+    res = await fetch('/api/case-modules', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, description: desc})
+    });
+  }
   
   const data = await res.json();
   
   if (data.success) {
-    showToast('模块已添加');
+    showToast(editingModuleId ? '模块已更新' : '模块已添加');
+    editingModuleId = null;
     closeModal('case-module-modal');
     await loadCaseModules();
   } else {
-    showToast(data.msg || '添加失败', 'error');
+    showToast(data.msg || '操作失败', 'error');
   }
 }
 

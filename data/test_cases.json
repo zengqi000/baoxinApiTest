@@ -3,7 +3,7 @@
     {
       "id": "2fed4edc",
       "name": "采购合同列表，根据采购合同查询",
-      "description": "",
+      "description": "{\n  \"name\": \"zq-采购-0702-001+{{random}}\"\n}",
       "moduleId": "885c8eef",
       "moduleName": "",
       "steps": [
@@ -12,13 +12,22 @@
           "apiId": "0cbbce36",
           "apiName": "获取采购合同id信息",
           "variables": {
-            "cgName": "zq-采购-0702-001"
+            "cgName": "{{name}}"
+          },
+          "assertions": []
+        },
+        {
+          "step": 2,
+          "apiId": "0cbbce36",
+          "apiName": "获取采购合同id信息",
+          "variables": {
+            "cgName": "{{name}}"
           },
           "assertions": []
         }
       ],
       "createdAt": "2026-07-04 16:11",
-      "updatedAt": "2026-07-04 16:39"
+      "updatedAt": "2026-07-07 20:44"
     },
     {
       "id": "da5e441c",
@@ -118,6 +127,64 @@
       ],
       "createdAt": "2026-07-04 18:08",
       "updatedAt": "2026-07-04 18:08"
+    },
+    {
+      "id": "b85594ac",
+      "name": "测试",
+      "description": "",
+      "moduleId": "885c8eef",
+      "moduleName": "",
+      "steps": [
+        {
+          "step": 1,
+          "apiId": "0cbbce36",
+          "apiName": "获取采购合同id信息",
+          "variables": {
+            "cgName": "zq-采购-0707-库存"
+          },
+          "assertions": []
+        },
+        {
+          "step": 2,
+          "apiId": "0cbbce36",
+          "apiName": "获取采购合同id信息",
+          "variables": {
+            "cgName": "{{No}}"
+          },
+          "assertions": []
+        }
+      ],
+      "createdAt": "2026-07-07 16:00",
+      "updatedAt": "2026-07-07 16:00"
+    },
+    {
+      "id": "8509229e",
+      "name": "321321",
+      "description": "",
+      "moduleId": "",
+      "moduleName": "",
+      "steps": [
+        {
+          "step": 1,
+          "apiId": "0cbbce36",
+          "apiName": "获取采购合同id信息",
+          "variables": {
+            "cgName": "zq-采购-0707-库存"
+          },
+          "assertions": []
+        },
+        {
+          "step": 2,
+          "apiId": "0cbbce36",
+          "apiName": "获取采购合同id信息",
+          "variables": {
+            "cgName": "{{No}}"
+          },
+          "assertions": []
+        }
+      ],
+      "createdAt": "2026-07-07 16:11",
+      "updatedAt": "2026-07-07 16:11"
     }
   ]
 }

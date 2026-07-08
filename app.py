@@ -533,7 +533,8 @@ def test_api_by_id(api_id):
         "assertionResults": result.get("assertions", []),
         "allAssertionsPass": all(a.get("passed", True) for a in result.get("assertions", [])),
         "savingLog": result.get("savingLog", []),
-        "bindingLog": result.get("bindingLog", [])
+        "bindingLog": result.get("bindingLog", []),
+        "preApiResult": result.get("preApiResult", None)
     })
 
 
@@ -692,6 +693,25 @@ def run_case_stream(case_id):
         yield f"data: {json.dumps({'type': 'start', 'totalSteps': total_steps, 'caseName': case.get('name', '')})}\n\n"
         
         temp_vars = {}
+        
+        case_desc = case.get("description", "")
+        if case_desc:
+            try:
+                desc_vars = json.loads(case_desc)
+                if isinstance(desc_vars, dict):
+                    configs_data = config_model.get_all()
+                    cache_data = {
+                        "datas": {**cache_service.get_datas(), **temp_vars},
+                        "headers": cache_service.get_headers()
+                    }
+                    for key, value in desc_vars.items():
+                        if isinstance(value, str):
+                            value = test_service.resolve_placeholders(value, configs_data, cache_data)
+                        temp_vars[key] = value
+                    logger.info(f"解析临时变量: {temp_vars}")
+            except json.JSONDecodeError:
+                pass
+        
         for idx, step in enumerate(steps):
             api_id = step.get("apiId")
             api_name = step.get("apiName", "")
@@ -1057,6 +1077,27 @@ def create_case_module():
     return jsonify({"success": True, "module": module})
 
 
+@app.route('/api/case-modules/<module_id>', methods=['PUT'])
+def update_case_module(module_id):
+    data = request.get_json()
+    modules_data = load_json(CASE_MODULES_FILE)
+    modules = modules_data.get("modules", [])
+    
+    for module in modules:
+        if module["id"] == module_id:
+            module["name"] = data.get("name", module["name"])
+            module["description"] = data.get("description", module["description"])
+            break
+    else:
+        return jsonify({"success": False, "msg": "模块不存在"})
+    
+    modules_data["modules"] = modules
+    save_json(CASE_MODULES_FILE, modules_data)
+    
+    logger.info(f"更新用例模块成功: {module_id}")
+    return jsonify({"success": True, "module": module})
+
+
 @app.route('/api/code/generate', methods=['POST'])
 def generate_code():
     data = request.get_json()
@@ -1143,4 +1184,4 @@ def delete_env(env_key):
 
 if __name__ == '__main__':
     logger.info("宝信API测试管理平台启动")
-    app.run(debug=True, host='0.0.0.0', port=5555)
+    app.run(debug=True, host='0.0.0.0', port=8888)

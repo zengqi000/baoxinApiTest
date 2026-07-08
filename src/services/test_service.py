@@ -16,39 +16,71 @@ class TestService:
         self.config_model = config_model
         self.cache_service = cache_service
 
-    def resolve_placeholders(self, content, configs_data, cache_data):
+    def _resolve_placeholder_value(self, value, configs_data, cache_data):
+        if isinstance(value, str):
+            return self._resolve_string_placeholders(value, configs_data, cache_data)
+        elif isinstance(value, dict):
+            return {k: self._resolve_placeholder_value(v, configs_data, cache_data) for k, v in value.items()}
+        elif isinstance(value, list):
+            return [self._resolve_placeholder_value(item, configs_data, cache_data) for item in value]
+        else:
+            return value
+
+    def _resolve_string_placeholders(self, content, configs_data, cache_data):
         if not isinstance(content, str):
             content = json.dumps(content, ensure_ascii=False)
         
         resolved = set()
+        all_datas = {**{c['name']: c.get('value', '') for c in configs_data}, **cache_data.get("datas", {})}
         
-        for config in configs_data:
-            placeholder = f"{{{{{config['name']}}}}}"
-            if placeholder in content:
-                content = content.replace(placeholder, str(config.get("value", "")))
-                resolved.add(config['name'])
+        pattern = r'\{\{([^}]+)\}\}'
+        matches = re.findall(pattern, content)
         
-        for key, value in cache_data.get("datas", {}).items():
-            if not key.startswith("_") and not key.endswith("_comment"):
-                if key not in resolved:
-                    placeholder = f"{{{{{key}}}}}"
-                    if placeholder in content:
-                        content = content.replace(placeholder, str(value))
+        if '{{random}}' in content:
+            content = content.replace('{{random}}', str(int(datetime.now().timestamp() * 1000)))
         
-        for config in configs_data:
-            if config['name'] == content and config['name'] not in resolved:
-                content = str(config.get("value", ""))
-                resolved.add(config['name'])
+        for placeholder_content in matches:
+            placeholder = f"{{{{{placeholder_content}}}}}"
+            if placeholder not in content:
+                continue
+            
+            sub_path = placeholder_content.replace('[', '.').replace(']', '')
+            parts = sub_path.split('.')
+            base_key = parts[0]
+            
+            if base_key not in all_datas:
+                continue
+            
+            value = all_datas[base_key]
+            
+            if len(parts) > 1 and isinstance(value, (dict, list)):
+                sub_path_for_extract = '.'.join(parts[1:])
+                extracted = self.extract_value(value, sub_path_for_extract)
+                if extracted is not None:
+                    content = content.replace(placeholder, str(extracted))
+                    resolved.add(base_key)
+            elif base_key not in resolved:
+                if isinstance(value, (dict, list)):
+                    content = content.replace(placeholder, json.dumps(value, ensure_ascii=False))
+                else:
+                    content = content.replace(placeholder, str(value))
+                resolved.add(base_key)
         
-        for key, value in cache_data.get("datas", {}).items():
-            if not key.startswith("_") and not key.endswith("_comment"):
-                if key == content and key not in resolved:
-                    content = str(value)
+        if content.strip() in all_datas and content.strip() not in resolved:
+            content = str(all_datas.get(content.strip(), ''))
         
         try:
             return json.loads(content)
         except json.JSONDecodeError:
             return content
+
+    def resolve_placeholders(self, content, configs_data, cache_data):
+        if isinstance(content, dict):
+            return self._resolve_placeholder_value(content, configs_data, cache_data)
+        elif isinstance(content, list):
+            return self._resolve_placeholder_value(content, configs_data, cache_data)
+        else:
+            return self._resolve_string_placeholders(content, configs_data, cache_data)
 
     def extract_value(self, data, path):
         if not path or not data:
@@ -126,13 +158,41 @@ class TestService:
         resolved_variables = {}
         for k, v in variables.items():
             if isinstance(v, str):
-                resolved_variables[k] = self.resolve_placeholders(v, configs_data, cache_data)
+                if k in cache_data["datas"] and v.strip() == '{{' + k + '}}':
+                    resolved_variables[k] = cache_data["datas"][k]
+                else:
+                    resolved_variables[k] = self.resolve_placeholders(v, configs_data, cache_data)
             else:
                 resolved_variables[k] = v
         
         cache_data["datas"].update(resolved_variables)
+        for k, v in resolved_variables.items():
+            if isinstance(v, (str, int, float, bool)) and v is not None:
+                if isinstance(v, str) and v.startswith('{{') and v.endswith('}}'):
+                    continue
+                temp_vars[k] = v
         logger.info(f"test_api - api_id={api_id}, temp_vars={temp_vars}, variables={variables}, resolved_variables={resolved_variables}")
         logger.info(f"test_api - cache_data[datas] keys={list(cache_data['datas'].keys())}")
+        
+        pre_api_result = None
+        pre_api_id = api.get("preApiId", "")
+        pre_api_variables = api.get("preApiVariables", {})
+        
+        if pre_api_id:
+            logger.info(f"执行前置接口: {pre_api_id}")
+            pre_api_result = self.test_api(pre_api_id, pre_api_variables, [], write_cache, temp_vars)
+            
+            http_success = 200 <= pre_api_result.get("statusCode", 0) < 400
+            if http_success:
+                for log in pre_api_result.get("savingLog", []):
+                    if log.get("value") is not None:
+                        temp_vars[log["cacheKey"]] = log["value"]
+                        cache_data["datas"][log["cacheKey"]] = log["value"]
+                logger.info(f"前置接口执行成功，更新temp_vars: {list(temp_vars.keys())}")
+            else:
+                logger.info(f"前置接口执行失败: {pre_api_result.get('message', '')}")
+        
+        configs_data = self.config_model.get_all()
         
         url = api["url"]
         if url.startswith('/'):
@@ -324,7 +384,8 @@ class TestService:
                 "requestBody": body,
                 "requestUrl": url,
                 "requestMethod": method,
-                "responseTime": response.elapsed.total_seconds() * 1000
+                "responseTime": response.elapsed.total_seconds() * 1000,
+                "preApiResult": pre_api_result
             }
         
         except requests.exceptions.RequestException as e:
@@ -354,7 +415,8 @@ class TestService:
                 "assertions": [],
                 "allAssertionsPass": True,
                 "savingLog": [],
-                "bindingLog": []
+                "bindingLog": [],
+                "preApiResult": pre_api_result
             }
 
     def run_module_apis(self, module_id=None):
@@ -410,12 +472,41 @@ class TestService:
         error_count = 0
         temp_vars = {}
         
+        case_desc = case.get("description", "")
+        logger.info(f"run_case - case_desc: {case_desc}")
+        if case_desc:
+            try:
+                desc_vars = json.loads(case_desc)
+                logger.info(f"run_case - desc_vars: {desc_vars}")
+                if isinstance(desc_vars, dict):
+                    configs_data = self.config_model.get_all()
+                    cache_data = {
+                        "datas": {**self.cache_service.get_datas(), **temp_vars},
+                        "headers": self.cache_service.get_headers()
+                    }
+                    for key, value in desc_vars.items():
+                        if isinstance(value, str):
+                            value = self.resolve_placeholders(value, configs_data, cache_data)
+                        temp_vars[key] = value
+                    logger.info(f"解析临时变量后: {temp_vars}")
+                    logger.info(f"临时变量 name 的值: {temp_vars.get('name', '未设置')}")
+            except json.JSONDecodeError as e:
+                logger.error(f"解析临时变量失败: {e}")
+                pass
+        
         steps = case.get("steps", [])
         for step in steps:
             api_id = step.get("apiId")
             api_name = step.get("apiName", "")
             variables = step.get("variables", {})
             assertions = step.get("assertions", [])
+            
+            for key, value in list(variables.items()):
+                if isinstance(value, str) and value.startswith('{{') and value.endswith('}}'):
+                    placeholder_key = value[2:-2].strip()
+                    if placeholder_key in temp_vars:
+                        variables[key] = temp_vars[placeholder_key]
+                        logger.info(f"将临时变量 {placeholder_key} 的值 '{temp_vars[placeholder_key]}' 赋值给 {key}")
             
             try:
                 result = self.test_api(api_id, variables, assertions, write_cache=False, temp_vars=temp_vars)

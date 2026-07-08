@@ -4,7 +4,7 @@
       "id": "dae19d69",
       "name": "签约平台",
       "value": "厦门国贸金属有限公司",
-      "referenced": false,
+      "referenced": true,
       "createdAt": "2026-07-02 20:55",
       "updatedAt": "2026-07-04 11:26"
     },
@@ -12,7 +12,7 @@
       "id": "44e127c9",
       "name": "业务员",
       "value": "闫宏飞",
-      "referenced": false,
+      "referenced": true,
       "createdAt": "2026-07-02 20:56"
     },
     {
@@ -41,7 +41,7 @@
       "id": "94133acb",
       "name": "部组",
       "value": "旧金属运营部-西南",
-      "referenced": false,
+      "referenced": true,
       "createdAt": "2026-07-03 10:30"
     },
     {
@@ -55,14 +55,14 @@
       "id": "7fcc5881",
       "name": "供应商",
       "value": "泉州三宝电子有限公司",
-      "referenced": false,
+      "referenced": true,
       "createdAt": "2026-07-03 10:31"
     },
     {
       "id": "72db7dd2",
       "name": "产品组",
       "value": "钢铁及制品",
-      "referenced": false,
+      "referenced": true,
       "createdAt": "2026-07-03 10:31"
     },
     {
