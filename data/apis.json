@@ -935,8 +935,8 @@
       "script": "",
       "variables": "",
       "createdAt": "2026-07-08 09:59",
-      "updatedAt": "2026-07-08 11:44",
-      "description": ""
+      "updatedAt": "2026-07-08 14:11",
+      "description": "先根据采购合同外部合同号获取采购合同编码，再通过编码测试采购合同详情"
     }
   ]
 }
