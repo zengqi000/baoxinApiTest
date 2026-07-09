@@ -183,10 +183,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 
 <!-- 侧边栏 -->
 <div class="sidebar">
-  <div class="logo"><div class="icon">B</div><span>宝信 API 平台</span></div>
+  <div class="logo" onclick="refreshCache()" title="点击刷新缓存" style="cursor:pointer"><div class="icon">B</div><span>宝信 API 平台</span></div>
   <nav>
     <a href="/" class="active"><div class="nav-icon">🔌</div><span>接口管理</span></a>
     <a href="/cases"><div class="nav-icon">📋</div><span>用例管理</span></a>
+    <a href="/locust"><div class="nav-icon">⚡</div><span>性能测试</span></a>
   </nav>
 </div>
 
@@ -209,7 +210,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
     <div class="card">
       <div class="card-header">
-        <div class="card-title" style="display:flex;align-items:center;gap:8px">
+        <div class="card-title" style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="refreshCache()" title="点击刷新缓存">
           <span style="color:var(--teal)">📦</span> 数据缓存 (data.json)
           <span class="tag tag-teal" id="cache-count-tag">0 个字段</span>
         </div>
@@ -728,6 +729,44 @@ function renderCache(data) {
     return;
   }
   display.innerHTML = formatCacheJson(data);
+}
+
+async function refreshCache() {
+  const btn = document.querySelector('button[onclick="refreshCache()"]');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '🔄 刷新中...';
+  btn.disabled = true;
+  
+  try {
+    const res = await fetch('/api/data-cache/refresh', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      cacheData = data.data;
+      renderCache(data.data);
+      
+      let count = 0;
+      function countKeys(obj) {
+        if (typeof obj === 'object' && obj !== null) {
+          for (let k in obj) {
+            if (typeof obj[k] === 'object' && obj[k] !== null) countKeys(obj[k]);
+            else count++;
+          }
+        }
+      }
+      countKeys(data.data);
+      document.getElementById('cache-count-tag').textContent = count + ' 个字段';
+      
+      alert('缓存刷新成功！');
+    } else {
+      alert('缓存刷新失败: ' + (data.message || '未知错误'));
+    }
+  } catch (e) {
+    console.error('刷新缓存失败:', e);
+    alert('缓存刷新失败: ' + e.message);
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
 }
 
 function formatCacheJson(obj, indent = 0) {
@@ -1879,8 +1918,9 @@ async function quickTestApi(id) {
   const data = await res.json();
 
   const isHttpError = data.statusCode === 0 || data.statusCode >= 400;
+  const isAssertionFail = data.allAssertionsPass === false;
 
-  if (data.success && !isHttpError) {
+  if (data.success && !isHttpError && !isAssertionFail) {
     const assertionStatus = data.allAssertionsPass === false ? 'red' : 'green';
     const assertionText = data.allAssertionsPass === false ? '断言失败' : `HTTP ${data.statusCode}`;
     document.getElementById('test-result-content').innerHTML = `
@@ -2031,8 +2071,18 @@ async function quickTestApi(id) {
   } else {
     const methodClass = data.method === 'GET' ? 'blue' : data.method === 'POST' ? 'green' : data.method === 'PUT' ? 'orange' : 'red';
     
-    const failTag = data.statusCode === 0 ? '请求未到达 (HTTP 0)' : '请求失败';
-    const failMsg = data.message || data.msg || (data.statusCode === 0 ? '接口地址无法访问，请检查网络或环境配置' : '');
+    let failTag, failMsg;
+    if (isAssertionFail) {
+      failTag = '断言失败';
+      failMsg = '接口返回数据不满足断言条件';
+    } else if (data.statusCode === 0) {
+      failTag = '请求未到达 (HTTP 0)';
+      failMsg = '接口地址无法访问，请检查网络或环境配置';
+    } else {
+      failTag = '请求失败';
+      failMsg = data.message || data.msg || '';
+    }
+    
     document.getElementById('test-result-content').innerHTML = `
       <div style="display:flex;gap:16px;align-items:center">
         <span class="tag tag-red">${failTag}</span>
@@ -2079,7 +2129,9 @@ async function quickTestApi(id) {
       preApiSection.style.display = 'none';
     }
 
-    document.getElementById('request-info-display').innerHTML = `
+    // ★ 显示请求信息（错误分支）
+    const requestDisplay = document.getElementById('request-info-display');
+    requestDisplay.innerHTML = `
       <div style="margin-bottom:12px">
         <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">请求方式</div>
         <span class="tag tag-${methodClass}" style="font-size:14px;font-weight:600">${data.method || 'POST'}</span>
@@ -2108,17 +2160,34 @@ async function quickTestApi(id) {
       ` : ''}
     `;
 
-    let displayResponse = '';
-    if (data.statusCode === 0) {
-      displayResponse = data.message || data.msg || '请求未到达服务器（HTTP 0），可能原因：\n1. 接口地址无法访问\n2. 网络连接失败\n3. DNS 解析失败';
-    } else if (data.response !== undefined && data.response !== null) {
-      displayResponse = JSON.stringify(data.response, null, 2);
+    // ★ 显示响应内容（错误分支）
+    const respText = (data.response !== undefined && data.response !== null) ? JSON.stringify(data.response, null, 2) : (data.message || data.msg || '无响应数据');
+    document.getElementById('test-result-response').textContent = respText;
+
+    // ★ 显示断言结果（错误分支）
+    const assertionSection = document.getElementById('assertion-section');
+    if (data.assertionResults && data.assertionResults.length > 0) {
+      assertionSection.style.display = 'block';
+      assertionSection.innerHTML = `
+        <div style="font-size:15px;font-weight:600;color:var(--primary);margin-bottom:8px">✅ 断言结果</div>
+        <div class="card" style="padding:12px">
+          ${data.assertionResults.map(a => `
+            <div class="flow-log-item" style="align-items:center">
+              <span class="tag tag-${a.passed ? 'green' : 'red'}" style="width:60px;text-align:center">${a.passed ? '通过' : '失败'}</span>
+              <span style="color:var(--gray-600)">${a.field === '_status_code' ? 'Status Code' : a.field}</span>
+              <span style="color:var(--gray-400)">${a.operator === 'eq' ? '==' : a.operator === 'ne' ? '!=' : a.operator === 'in' || a.operator === 'contains' ? '包含' : a.operator === 'greater_than' ? '>' : a.operator === 'less_than' ? '<' : a.operator}</span>
+              <span style="font-weight:500">${a.expected}</span>
+              <span style="color:var(--gray-400);margin-left:auto">实际: ${a.actual}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
     } else {
-      displayResponse = data.message || data.msg || '无响应数据';
+      assertionSection.style.display = 'none';
     }
-    document.getElementById('test-result-response').textContent = displayResponse;
+
+    // ★ 隐藏数据流转日志（错误分支）
     document.getElementById('flow-log-section').style.display = 'none';
-    document.getElementById('assertion-section').style.display = 'none';
   }
   showModal('test-result-modal');
 

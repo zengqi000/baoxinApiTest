@@ -326,18 +326,6 @@ class TestService:
             assertions = step_assertions if step_assertions else api.get("assertions", [])
             assertion_results = []
             
-            assertion_results.append({
-                "field": "",
-                "responsePath": "",
-                "operator": "status_code",
-                "expected": "200-399",
-                "expectedValue": "200-399",
-                "actual": response.status_code,
-                "actualValue": response.status_code,
-                "passed": 200 <= response.status_code < 400,
-                "result": 200 <= response.status_code < 400
-            })
-            
             if assertions:
                 for assertion in assertions:
                     field = assertion.get("field", assertion.get("responsePath", ""))
@@ -355,20 +343,8 @@ class TestService:
                         passed = str(actual) != str(expected)
                     elif operator == "in" or operator == "contains":
                         if not field or field.strip() == "":
-                            def contains_value(obj, val):
-                                if isinstance(obj, dict):
-                                    for v in obj.values():
-                                        if contains_value(v, val):
-                                            return True
-                                elif isinstance(obj, list):
-                                    for item in obj:
-                                        if contains_value(item, val):
-                                            return True
-                                else:
-                                    if str(val) in str(obj):
-                                        return True
-                                return False
-                            passed = contains_value(response_data, expected)
+                            response_str = json.dumps(response_data, ensure_ascii=False)
+                            passed = str(expected) in response_str
                             actual = f"字段'{expected}'存在" if passed else f"字段'{expected}'不存在"
                         else:
                             actual = self.extract_value(response_data, field)

@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宝信 API 测试管理平台 - 性能测试</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --primary: #534AB7; --primary-light: #CECBF6; --primary-bg: #EEEDFE;
+  --success: #3B6D11; --success-light: #C0DD97; --success-bg: #EAF3DE;
+  --danger: #A32D2D; --danger-light: #F7C1C1; --danger-bg: #FCEBEB;
+  --warning: #BA7517; --warning-light: #FAC775; --warning-bg: #FAEEDA;
+  --gray-100: #F1EFE8; --gray-200: #D3D1C7; --gray-400: #888780; --gray-600: #5F5E5A; --gray-900: #2C2C2A;
+  --blue: #378ADD; --blue-light: #B5D4F4; --blue-bg: #E6F1FB;
+  --teal: #0F6E56; --teal-light: #9FE1CB; --teal-bg: #E1F5EE;
+  --orange: #D97706; --orange-light: #FCD34D; --orange-bg: #FFFBEB;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; background: var(--gray-100); color: var(--gray-900); line-height: 1.5; }
+
+.sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; background: var(--gray-900); color: white; display: flex; flex-direction: column; z-index: 100; }
+.sidebar .logo { padding: 20px 16px; font-size: 18px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; }
+.sidebar .logo .icon { width: 28px; height: 28px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.sidebar nav { padding: 8px 0; }
+.sidebar nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; border-radius: 6px; margin: 2px 8px; transition: all .2s; }
+.sidebar nav a:hover { background: rgba(255,255,255,0.1); color: white; }
+.sidebar nav a.active { background: var(--primary); color: white; }
+.sidebar nav a .nav-icon { width: 20px; text-align: center; font-size: 15px; }
+
+.main { margin-left: 240px; padding: 24px 32px; min-height: 100vh; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.page-header h1 { font-size: 22px; font-weight: 600; }
+.page-header .subtitle { color: var(--gray-400); font-size: 14px; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; transition: all .2s; font-family: inherit; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: #3C3489; }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #27500A; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { background: #791F1F; }
+.btn-outline { background: transparent; border: 1px solid var(--gray-200); color: var(--gray-600); }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 4px 10px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.card { background: white; border-radius: 12px; border: 1px solid var(--gray-200); padding: 16px; margin-bottom: 16px; }
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.card-title { font-size: 16px; font-weight: 600; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: white; border-radius: 12px; border: 1px solid var(--gray-200); padding: 20px; }
+.stat-card .label { color: var(--gray-400); font-size: 13px; margin-bottom: 4px; }
+.stat-card .value { font-size: 28px; font-weight: 600; }
+.stat-card .value.purple { color: var(--primary); }
+.stat-card .value.green { color: var(--success); }
+.stat-card .value.blue { color: var(--blue); }
+.stat-card .value.orange { color: var(--warning); }
+.stat-card .value.red { color: var(--danger); }
+.stat-card .value.teal { color: var(--teal); }
+
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.tag-purple { background: var(--primary-bg); color: var(--primary); }
+.tag-green { background: var(--success-bg); color: var(--success); }
+.tag-blue { background: var(--blue-bg); color: var(--blue); }
+.tag-red { background: var(--danger-bg); color: var(--danger); }
+.tag-orange { background: var(--warning-bg); color: var(--warning); }
+
+.table { width: 100%; border-collapse: collapse; }
+.table th { text-align: left; padding: 10px 12px; font-size: 13px; color: var(--gray-400); border-bottom: 1px solid var(--gray-200); font-weight: 500; }
+.table td { padding: 10px 12px; font-size: 14px; border-bottom: 1px solid var(--gray-100); }
+.table tr:hover td { background: var(--gray-100); }
+.table .actions { display: flex; gap: 6px; }
+
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: var(--gray-600); }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; font-family: inherit; outline: none; transition: border .2s; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); }
+.form-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: var(--gray-400); }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state .title { font-size: 16px; margin-bottom: 6px; color: var(--gray-600); }
+.empty-state .desc { font-size: 14px; }
+
+.search-bar { display: flex; gap: 8px; align-items: center; }
+.search-bar input { padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; width: 260px; }
+.search-bar input:focus { border-color: var(--primary); outline: none; }
+
+.test-status { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 500; }
+.test-status.running { background: var(--orange-bg); color: var(--orange); }
+.test-status.stopped { background: var(--danger-bg); color: var(--danger); }
+.test-status.completed { background: var(--success-bg); color: var(--success); }
+
+.log-panel { background: #1e1e2e; color: #cdd6f4; border-radius: 12px; padding: 16px; font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto; }
+.log-panel .time { color: #6c7086; }
+.log-panel .info { color: #89b4fa; }
+.log-panel .success { color: #a6e3a1; }
+.log-panel .error { color: #f38ba8; }
+.log-panel .warning { color: #f9e2af; }
+
+.api-select-card { background: white; border-radius: 8px; border: 2px solid transparent; padding: 12px; margin-bottom: 8px; cursor: pointer; transition: all .2s; }
+.api-select-card:hover { border-color: var(--primary-light); }
+.api-select-card.selected { border-color: var(--primary); background: var(--primary-bg); }
+.api-select-card .api-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.api-select-card .api-name { font-weight: 600; font-size: 14px; }
+.api-select-card .api-method { font-size: 12px; padding: 2px 8px; border-radius: 4px; }
+.api-select-card .api-method.get { background: var(--blue-bg); color: var(--blue); }
+.api-select-card .api-method.post { background: var(--success-bg); color: var(--success); }
+.api-select-card .api-method.put { background: var(--warning-bg); color: var(--warning); }
+.api-select-card .api-method.delete { background: var(--danger-bg); color: var(--danger); }
+.api-select-card .api-url { font-size: 12px; color: var(--gray-400); }
+
+.locust-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.locust-table th { background: #f8fafc; padding: 10px 8px; text-align: right; font-weight: 600; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+.locust-table th:first-child { text-align: left; }
+.locust-table td { padding: 10px 8px; text-align: right; border-bottom: 1px solid #f1f5f9; }
+.locust-table td:first-child { text-align: left; font-weight: 500; }
+.locust-table tr:hover td { background: #f8fafc; }
+.locust-table .failures { color: #dc2626; font-weight: 600; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 200; }
+.modal-overlay.show { display: flex; }
+.modal { background: white; border-radius: 16px; width: 780px; max-height: 85vh; overflow-y: auto; overflow-x: hidden; padding: 24px; position: relative; }
+.modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+.modal .close-btn { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--gray-400); }
+.result-panel { background: #1e1e2e; color: #cdd6f4; border-radius: 8px; padding: 12px; font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; min-height: 120px; white-space: pre-wrap; word-break: break-all; }
+.flow-log-item { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 0; font-size: 13px; border-bottom: 1px solid rgba(0,0,0,0.05); cursor: pointer; }
+.flow-log-item:last-child { border-bottom: none; }
+.flow-log-item .arrow { color: var(--gray-400); }
+.flow-log-item .value-text { font-family: "SF Mono", "Fira Code", monospace; font-size: 12px; }
+.flow-log-item.expanded { background: rgba(83,74,183,0.05); padding: 8px 12px; border-radius: 6px; margin: 4px 0; }
+.json-editor { background: #1e1e2e; color: #cdd6f4; border-radius: 8px; padding: 12px; font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; min-height: 120px; white-space: pre-wrap; word-break: break-all; }
+.locust-table .success { color: #16a34a; }
+
+@media (max-width: 768px) {
+  .sidebar { width: 60px; }
+  .sidebar nav a span { display: none; }
+  .sidebar .logo span { display: none; }
+  .main { margin-left: 60px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo"><div class="icon">B</div><span>宝信 API 平台</span></div>
+  <nav>
+    <a href="/"><div class="nav-icon">🔌</div><span>接口管理</span></a>
+    <a href="/cases"><div class="nav-icon">📋</div><span>用例管理</span></a>
+    <a href="/locust" class="active"><div class="nav-icon">⚡</div><span>性能测试</span></a>
+  </nav>
+</div>
+
+<div class="main">
+  <div class="page-header">
+    <div><h1>性能测试</h1><div class="subtitle">基于 Locust 的 API 性能压测，支持多接口并发测试</div></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="env-selector" style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:16px">🌐</span>
+        <select id="env-select" onchange="switchEnv(this.value)" style="padding:6px 10px;border:1px solid var(--primary-light);border-radius:8px;background:var(--primary-bg);color:var(--primary);font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;outline:none;min-width:120px">
+          <option value="">加载中...</option>
+        </select>
+        <span id="current-env-host" style="font-size:12px;color:var(--gray-600);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="">-</span>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title" style="display:flex;align-items:center;gap:8px">
+            <span>📝</span> 选择测试接口
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="selectAllApis()">全选</button>
+            <button class="btn btn-outline btn-sm" onclick="clearAllApis()">清空</button>
+          </div>
+        </div>
+        <div class="search-bar" style="margin-bottom:12px">
+          <input type="text" id="api-search" placeholder="搜索接口名称..." oninput="filterApis()">
+        </div>
+        <div id="api-list" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title" style="display:flex;align-items:center;gap:8px">
+            <span>⚙</span> 测试配置
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>并发用户数</label>
+            <input type="number" id="user-count" value="10" min="1" max="1000" placeholder="并发用户数">
+            <div class="hint">模拟的并发用户数量</div>
+          </div>
+          <div class="form-group">
+            <label>每秒新增用户</label>
+            <input type="number" id="spawn-rate" value="2" min="1" max="100" placeholder="每秒新增">
+            <div class="hint">每秒启动的用户数量</div>
+          </div>
+          <div class="form-group">
+            <label>测试时长(秒)</label>
+            <input type="number" id="duration" value="60" min="10" max="3600" placeholder="测试时长">
+            <div class="hint">测试持续时间</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>请求间隔(毫秒)</label>
+          <input type="number" id="wait-time" value="1000" min="0" max="10000" placeholder="请求间隔">
+          <div class="hint">每个用户两次请求之间的等待时间</div>
+        </div>
+        <div class="form-group">
+          <label>测试描述</label>
+          <textarea id="test-desc" placeholder="输入测试描述..."></textarea>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-primary" id="start-btn" onclick="startLocustTest()">开始测试</button>
+          <button class="btn btn-danger" id="stop-btn" onclick="stopLocustTest()" disabled>停止测试</button>
+          <span id="test-status" class="test-status stopped">已停止</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="locust-modal">
+      <div class="modal" style="position:relative;width:95%;height:90vh">
+        <button class="close-btn" onclick="closeLocustModal()" style="top:10px;right:10px;z-index:10">x</button>
+        <div id="locust-loading" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:white;z-index:5"></div>
+        <iframe 
+          id="locust-iframe"
+          src="about:blank" 
+          style="width: 100%; height: 100%; border: none;"
+          title="Locust Web UI"
+        ></iframe>
+      </div>
+    </div>
+
+
+  </div>
+</div>
+
+<div class="modal-overlay" id="test-result-modal">
+  <div class="modal" style="position:relative;width:820px">
+    <button class="close-btn" onclick="closeModal('test-result-modal')">x</button>
+    <h2>接口测试结果</h2>
+    <div id="test-result-content" style="margin-bottom:16px"></div>
+
+    <div id="pre-api-section" style="display:none;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:600;color:var(--purple);margin-bottom:8px">🔗 前置接口执行结果</div>
+      <div class="card" style="padding:12px;border-left:4px solid var(--purple)">
+        <div id="pre-api-info"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <div class="card-title" style="display:flex;align-items:center;gap:8px">
+          <span style="color:var(--blue)">📡</span> 请求信息
+        </div>
+      </div>
+      <div id="request-info-display"></div>
+    </div>
+
+    <div id="assertion-section" style="display:none;margin-bottom:16px"></div>
+
+    <div id="flow-log-section" style="display:none;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:600;color:var(--primary);margin-bottom:8px">📊 数据流转日志</div>
+      <div class="card" style="padding:12px">
+        <div id="binding-log-display"></div>
+        <div id="saving-log-display"></div>
+      </div>
+    </div>
+
+    <div style="font-size:14px;font-weight:500;margin-bottom:8px;color:var(--gray-600)">响应内容</div>
+    <div id="test-result-response" class="result-panel"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="variable-input-modal">
+  <div class="modal" style="position:relative;width:520px">
+    <button class="close-btn" onclick="cancelVariableInput()">x</button>
+    <h2 id="variable-modal-title">请输入变量值</h2>
+    <div id="variable-input-fields"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn btn-outline" onclick="cancelVariableInput()">取消</button>
+      <button class="btn btn-primary" onclick="confirmVariableInput()">确定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedApiIds = [];
+let apis = [];
+let isTesting = false;
+let testInterval = null;
+let countdownInterval = null;
+let remainingSeconds = 0;
+let currentVariableList = [];
+let variableInputCallback = null;
+let cacheData = {};
+
+function showModal(id) {
+  const overlay = document.getElementById(id);
+  overlay.classList.add('show');
+  
+  const overlayClickHandler = function(e) {
+    if (e.target === overlay) {
+      closeModal(id);
+    }
+  };
+  
+  overlay.removeEventListener('click', overlayClickHandler);
+  overlay.addEventListener('click', overlayClickHandler);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+function showVariableInputModal(varList, callback) {
+  currentVariableList = varList;
+  variableInputCallback = callback;
+  
+  document.getElementById('variable-modal-title').textContent = '请输入变量值';
+  const fieldsContainer = document.getElementById('variable-input-fields');
+  
+  let html = '';
+  varList.forEach((v, index) => {
+    html += `
+      <div class="form-group">
+        <label>${v}</label>
+        <input type="text" id="var-input-${index}" placeholder="请输入 ${v} 的值">
+      </div>
+    `;
+  });
+  fieldsContainer.innerHTML = html;
+  
+  showModal('variable-input-modal');
+}
+
+function confirmVariableInput() {
+  const varInputs = {};
+  let isValid = true;
+  
+  currentVariableList.forEach((v, index) => {
+    const input = document.getElementById(`var-input-${index}`);
+    const val = input.value.trim();
+    if (!val) {
+      isValid = false;
+      input.focus();
+    }
+    varInputs[v] = val;
+  });
+  
+  if (isValid && variableInputCallback) {
+    closeModal('variable-input-modal');
+    variableInputCallback(varInputs);
+    variableInputCallback = null;
+  }
+}
+
+function cancelVariableInput() {
+  if (variableInputCallback) {
+    closeModal('variable-input-modal');
+    variableInputCallback(null);
+    variableInputCallback = null;
+  }
+}
+
+function showLocustModal() {
+  document.getElementById('locust-modal').classList.add('show');
+}
+
+function closeLocustModal() {
+  document.getElementById('locust-modal').classList.remove('show');
+}
+
+async function loadCache() {
+  try {
+    const res = await fetch('/api/data-cache');
+    const data = await res.json();
+    if (data.success) {
+      cacheData = data.data;
+    }
+  } catch (e) {
+    console.error('加载缓存失败:', e);
+  }
+}
+
+function loadApis() {
+  fetch('/api/apis')
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        apis = data.apis || [];
+        renderApiList();
+      }
+    })
+    .catch(err => {});
+}
+
+let currentEnvKey = '';
+
+function loadEnv() {
+  fetch('/api/project/envs')
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const envs = data.envs || {};
+        const current = data.currentEnv;
+        currentEnvKey = current;
+
+        const selectEl = document.getElementById('env-select');
+        selectEl.innerHTML = '';
+
+        Object.entries(envs).forEach(([key, env]) => {
+          const opt = document.createElement('option');
+          opt.value = key;
+          opt.textContent = env.name;
+          if (key === current) opt.selected = true;
+          selectEl.appendChild(opt);
+        });
+
+        // 更新 host 显示
+        const curEnv = envs[current];
+        if (curEnv) {
+          document.getElementById('current-env-host').textContent = curEnv.host || '';
+          document.getElementById('current-env-host').title = curEnv.host || '';
+        }
+      }
+    })
+    .catch(err => {});
+}
+
+async function switchEnv(envKey) {
+  if (!envKey || envKey === currentEnvKey) return;
+
+  try {
+    const res = await fetch('/api/project/envs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current: envKey })
+    });
+    const data = await res.json();
+    if (data.success) {
+      currentEnvKey = envKey;
+      const selectEl = document.getElementById('env-select');
+      const selectedOpt = selectEl.options[selectEl.selectedIndex];
+      const hostText = document.getElementById('current-env-host');
+
+      // 从接口重新获取最新env信息以更新host
+      fetch('/api/project/envs')
+        .then(r => r.json())
+        .then(d => {
+          if (d.success && d.envs[envKey]) {
+            hostText.textContent = d.envs[envKey].host || '';
+            hostText.title = d.envs[envKey].host || '';
+          }
+        });
+
+    } else {
+      document.getElementById('env-select').value = currentEnvKey;
+    }
+  } catch (err) {
+    document.getElementById('env-select').value = currentEnvKey;
+  }
+}
+
+function renderApiList() {
+  const container = document.getElementById('api-list');
+  const search = document.getElementById('api-search').value.toLowerCase();
+  
+  const filtered = apis.filter(api => 
+    api.name.toLowerCase().includes(search) || 
+    api.url.toLowerCase().includes(search)
+  );
+  
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔍</div>
+        <div class="title">没有找到接口</div>
+        <div class="desc">请尝试其他搜索关键词</div>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = filtered.map(api => {
+    const isSelected = selectedApiIds.includes(api.id);
+    return `
+      <div class="api-select-card ${isSelected ? 'selected' : ''}" onclick="toggleApi('${api.id}')">
+        <div class="api-header">
+          <span class="api-name">${api.name}</span>
+          <span class="api-method ${api.method.toLowerCase()}">${api.method}</span>
+        </div>
+        <div class="api-url">${api.url}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterApis() {
+  renderApiList();
+}
+
+function toggleApi(apiId) {
+  const index = selectedApiIds.indexOf(apiId);
+  if (index > -1) {
+    selectedApiIds.splice(index, 1);
+  } else {
+    selectedApiIds.push(apiId);
+  }
+  renderApiList();
+}
+
+function selectAllApis() {
+  selectedApiIds = apis.map(a => a.id);
+  renderApiList();
+}
+
+function clearAllApis() {
+  selectedApiIds = [];
+  renderApiList();
+}
+
+function startLocustTest() {
+  if (selectedApiIds.length === 0) {
+    alert('请至少选择一个接口');
+    return;
+  }
+  
+  const config = {
+    apiIds: selectedApiIds,
+    userCount: parseInt(document.getElementById('user-count').value) || 10,
+    spawnRate: parseInt(document.getElementById('spawn-rate').value) || 2,
+    duration: parseInt(document.getElementById('duration').value) || 60,
+    waitTime: parseInt(document.getElementById('wait-time').value) || 1000,
+    description: document.getElementById('test-desc').value
+  };
+  
+  isTesting = true;
+  document.getElementById('start-btn').disabled = true;
+  document.getElementById('stop-btn').disabled = false;
+  document.getElementById('test-status').textContent = '测试中';
+  document.getElementById('test-status').className = 'test-status running';
+  
+  // 先显示弹窗，显示加载状态
+  showLocustModal();
+  const locustIframe = document.getElementById('locust-iframe');
+  const loadingDiv = document.getElementById('locust-loading');
+  
+  locustIframe.style.display = 'none';
+  loadingDiv.style.display = 'flex';
+  loadingDiv.innerHTML = `
+    <div style="text-align:center">
+      <div style="font-size:48px;margin-bottom:16px">🚀</div>
+      <div style="font-size:18px;font-weight:600;color:var(--gray-900);margin-bottom:8px">正在启动性能测试...</div>
+      <div style="font-size:14px;color:var(--gray-400)">正在初始化 Locust 服务，请稍候...</div>
+    </div>
+  `;
+  
+  fetch('/api/locust/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config)
+  }).then(res => {
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      return res.text().then(t => ({ success: false, message: '服务异常: ' + t.slice(0, 200) }));
+    }
+    return res.json();
+  }).then(data => {
+    if (!data || !data.success) {
+      stopTestUI();
+      closeLocustModal();
+      alert(data ? (data.message || '启动失败') : '启动失败');
+    } else {
+      // API调用成功，切换到Locust页面
+      loadingDiv.innerHTML = `
+        <div style="text-align:center">
+          <div style="font-size:48px;margin-bottom:16px">✅</div>
+          <div style="font-size:18px;font-weight:600;color:var(--gray-900);margin-bottom:8px">测试已启动</div>
+          <div style="font-size:14px;color:var(--gray-400)">正在加载 Locust 界面...</div>
+        </div>
+      `;
+      
+      // 等待片刻后显示Locust页面，使用代理路径进行中文替换
+      setTimeout(() => {
+        locustIframe.src = '/locust-proxy/';
+        loadingDiv.style.display = 'none';
+        locustIframe.style.display = 'block';
+      }, 1000);
+    }
+  }).catch(err => {
+    stopTestUI();
+    closeLocustModal();
+    alert('启动失败: ' + (err.message || '未知错误'));
+  });
+  
+  testInterval = setInterval(() => {
+    fetch('/api/locust/stats', { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && data.stats.status === 'completed') {
+          stopTestUI();
+        }
+      })
+      .catch(err => {});
+  }, 1000);
+}
+
+function stopLocustTest() {
+  fetch('/api/locust/stop', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      stopTestUI();
+    });
+}
+
+function stopTestUI() {
+  isTesting = false;
+  document.getElementById('start-btn').disabled = false;
+  document.getElementById('stop-btn').disabled = true;
+  document.getElementById('test-status').textContent = '已停止';
+  document.getElementById('test-status').className = 'test-status stopped';
+  if (testInterval) {
+    clearInterval(testInterval);
+    testInterval = null;
+  }
+}
+
+// 将Locust界面的英文标签替换为中文
+function injectChineseLabels(doc) {
+  const translations = {
+    'Host': '主机',
+    'Status': '状态',
+    'Users': '用户数',
+    'RPS': '请求/秒',
+    'Failures': '失败率',
+    'EDIT': '编辑',
+    'STOP': '停止',
+    'RESET': '重置',
+    'STATISTICS': '统计',
+    'CHARTS': '图表',
+    'FAILURES': '失败',
+    'EXCEPTIONS': '异常',
+    'CURRENT RATIO': '当前比例',
+    'DOWNLOAD DATA': '下载数据',
+    'LOGS': '日志',
+    'Type': '类型',
+    'Name': '名称',
+    '# Requests': '请求数',
+    '# Fails': '失败数',
+    'Median (ms)': '中位数(毫秒)',
+    '95%ile (ms)': '95%耗时(毫秒)',
+    '99%ile (ms)': '99%耗时(毫秒)',
+    'Average (ms)': '平均(毫秒)',
+    'Min (ms)': '最小(毫秒)',
+    'Max (ms)': '最大(毫秒)',
+    'Average size (bytes)': '平均大小(字节)',
+    'Current RPS': '当前请求/秒',
+    'Current Failures/s': '当前失败/秒',
+    'RUNNING': '运行中',
+    'Aggregated': '汇总',
+    'ABOUT': '关于',
+    'Total RPS': '总请求/秒',
+    'Total Failures/s': '总失败/秒'
+  };
+
+  function replaceText(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const originalText = node.textContent.trim();
+      if (translations[originalText]) {
+        node.textContent = node.textContent.replace(originalText, translations[originalText]);
+      }
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      if (node.hasAttribute('class') && node.className.includes('menu')) {
+        // 跳过菜单元素，避免重复替换
+        return;
+      }
+      node.childNodes.forEach(replaceText);
+    }
+  }
+
+  replaceText(doc.body);
+}
+
+
+
+
+loadApis();
+loadEnv();
+loadTestStatus();
+
+function loadTestStatus() {
+  fetch('/api/locust/stats', { cache: 'no-store' })
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.success) {
+        const stats = data.stats;
+        if (stats.status === 'running') {
+          isTesting = true;
+          document.getElementById('start-btn').disabled = true;
+          document.getElementById('stop-btn').disabled = false;
+          document.getElementById('test-status').textContent = '测试中';
+          document.getElementById('test-status').className = 'test-status running';
+          
+          testInterval = setInterval(() => {
+            fetch('/api/locust/stats', { cache: 'no-store' })
+              .then(res => res.json())
+              .then(data => {
+                if (data && data.success && data.stats.status === 'completed') {
+                  stopTestUI();
+                }
+              })
+              .catch(err => {});
+          }, 1000);
+        }
+      }
+    })
+    .catch(err => {});
+}
+
+async function viewApiResponse(apiId) {
+  const apiRes = await fetch(`/api/apis/${apiId}`);
+  const apiData = await apiRes.json();
+  const apiInfo = apiData.api || apiData;
+
+  let variables = {};
+  let preApiVariables = {};
+
+  if (apiInfo.preApiId) {
+    const preApiRes = await fetch(`/api/apis/${apiInfo.preApiId}`);
+    const preApiData = await preApiRes.json();
+    const preApiInfo = preApiData.api || preApiData;
+
+    if (preApiInfo.variables && preApiInfo.variables.trim()) {
+      const preVarList = preApiInfo.variables.split(/[,，]/).map(v => v.trim()).filter(v => v);
+      const existingPreVars = apiInfo.preApiVariables || {};
+      const missingVars = preVarList.filter(v => !existingPreVars[v] || !existingPreVars[v].trim());
+
+      if (missingVars.length > 0) {
+        const result = await new Promise((resolve) => {
+          showVariableInputModal(missingVars, (inputs) => {
+            resolve(inputs);
+          });
+        });
+
+        if (result === null) {
+          return;
+        }
+        preApiVariables = {...existingPreVars, ...result};
+      } else {
+        preApiVariables = existingPreVars;
+      }
+    }
+  }
+
+  if (apiInfo.variables && apiInfo.variables.trim()) {
+    const varList = apiInfo.variables.split(/[,，]/).map(v => v.trim()).filter(v => v);
+    if (varList.length > 0) {
+      const result = await new Promise((resolve) => {
+        showVariableInputModal(varList, (inputs) => {
+          resolve(inputs);
+        });
+      });
+
+      if (result === null) {
+        return;
+      }
+      variables = result;
+    }
+  }
+
+  const res = await fetch(`/api/apis/${apiId}/test`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({variables, preApiVariables})
+  });
+  const data = await res.json();
+
+  const isHttpError = data.statusCode === 0 || data.statusCode >= 400;
+  const isAssertionFail = data.allAssertionsPass === false;
+
+  if (data.success && !isHttpError && !isAssertionFail) {
+    const assertionStatus = data.allAssertionsPass === false ? 'red' : 'green';
+    const assertionText = data.allAssertionsPass === false ? '断言失败' : `HTTP ${data.statusCode}`;
+    document.getElementById('test-result-content').innerHTML = `
+      <div style="display:flex;gap:16px;align-items:center">
+        <span class="tag tag-${assertionStatus}">${assertionText}</span>
+        <span style="color:var(--gray-600)">响应时间: <strong style="color:var(--primary)">${data.responseTime}ms</strong></span>
+      </div>
+    `;
+
+    const preApiSection = document.getElementById('pre-api-section');
+    const preApiInfo = document.getElementById('pre-api-info');
+    if (data.preApiResult) {
+      preApiSection.style.display = 'block';
+      const preResult = data.preApiResult;
+      const preStatus = preResult.status === 'success' ? 'green' : 'red';
+      const preStatusText = preResult.status === 'success' ? '执行成功' : '执行失败';
+      let preSavingLogHtml = '';
+      if (preResult.savingLog && preResult.savingLog.length > 0) {
+        preSavingLogHtml = `<div style="margin-top:8px">
+          <div style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:4px">→ 响应保存（写入缓存）</div>
+          ${preResult.savingLog.map(s => `
+            <div class="flow-log-item" onclick="this.classList.toggle('expanded')">
+              <span class="arrow">→</span>
+              <span style="color:var(--gray-400)">${s.responsePath}</span>
+              <span style="color:var(--gray-400)">→</span>
+              <span style="color:var(--teal)">${s.cacheKey}</span>
+              <span class="tag tag-${s.status === '已保存' ? 'green' : 'red'}">${s.status}</span>
+              ${s.value !== null ? `<span style="color:var(--gray-400)">= <span class="value-text">${JSON.stringify(s.value)}</span></span>` : ''}
+            </div>
+          `).join('')}
+        </div>`;
+      }
+      preApiInfo.innerHTML = `
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+          <span class="tag tag-${preStatus}" style="font-size:12px">${preStatusText}</span>
+          <span style="font-size:13px;font-weight:500;color:var(--gray-700)">${preResult.requestMethod || 'GET'} ${preResult.requestUrl || ''}</span>
+          ${preResult.responseTime ? `<span style="font-size:12px;color:var(--gray-400)">响应时间: ${preResult.responseTime}ms</span>` : ''}
+        </div>
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">响应内容</div>
+        <div class="json-editor" style="min-height:60px;font-size:12px;white-space:pre-wrap;word-break:break-all;overflow-x:hidden">${JSON.stringify(preResult.response, null, 2)}</div>
+        ${preSavingLogHtml}
+      `;
+    } else {
+      preApiSection.style.display = 'none';
+    }
+
+    const requestDisplay = document.getElementById('request-info-display');
+    const methodClass = data.method === 'GET' ? 'blue' : data.method === 'POST' ? 'green' : data.method === 'PUT' ? 'orange' : 'red';
+    requestDisplay.innerHTML = `
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">请求方式</div>
+        <span class="tag tag-${methodClass}" style="font-size:14px;font-weight:600">${data.method}</span>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">请求URL</div>
+        <code style="font-size:13px;color:var(--gray-900)">${data.url}</code>
+      </div>
+      ${data.requestHeaders && Object.keys(data.requestHeaders).length > 0 ? `
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">请求头 (Headers)</div>
+        <div class="json-editor" style="min-height:60px;font-size:12px;white-space:pre-wrap;word-break:break-all;overflow-x:hidden">${JSON.stringify(data.requestHeaders, null, 2)}</div>
+      </div>
+      ` : ''}
+      ${data.requestParams && Object.keys(data.requestParams).length > 0 ? `
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">查询参数 (Params)</div>
+        <div class="json-editor" style="min-height:60px;font-size:12px;white-space:pre-wrap;word-break:break-all;overflow-x:hidden">${JSON.stringify(data.requestParams, null, 2)}</div>
+      </div>
+      ` : ''}
+      ${data.requestBody && Object.keys(data.requestBody).length > 0 ? `
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">请求体 (Body)</div>
+        <div class="json-editor" style="min-height:80px;font-size:12px;white-space:pre-wrap;word-break:break-all;overflow-x:hidden">${JSON.stringify(data.requestBody, null, 2)}</div>
+      </div>
+      ` : ''}
+    `;
+
+    const respText = (data.response !== undefined && data.response !== null) ? JSON.stringify(data.response, null, 2) : (data.message || data.msg || '无响应数据');
+    document.getElementById('test-result-response').textContent = respText;
+
+    const assertionSection = document.getElementById('assertion-section');
+    if (data.assertionResults && data.assertionResults.length > 0) {
+      assertionSection.style.display = 'block';
+      const allPass = data.allAssertionsPass ? 'green' : 'red';
+      assertionSection.innerHTML = `
+        <div style="font-size:15px;font-weight:600;color:var(--primary);margin-bottom:8px">✅ 断言结果</div>
+        <div class="card" style="padding:12px">
+          ${data.assertionResults.map(a => `
+            <div class="flow-log-item" style="align-items:center">
+              <span class="tag tag-${a.passed ? 'green' : 'red'}" style="width:60px;text-align:center">${a.passed ? '通过' : '失败'}</span>
+              <span style="color:var(--gray-600)">${a.field === '_status_code' ? 'Status Code' : a.field}</span>
+              <span style="color:var(--gray-400)">${a.operator === 'eq' ? '==' : a.operator === 'ne' ? '!=' : a.operator === 'in' || a.operator === 'contains' ? '包含' : a.operator === 'greater_than' ? '>' : a.operator === 'less_than' ? '<' : a.operator}</span>
+              <span style="font-weight:500">${a.expected}</span>
+              <span style="color:var(--gray-400);margin-left:auto">实际: ${a.actual}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      assertionSection.style.display = 'none';
+    }
+
+    const flowSection = document.getElementById('flow-log-section');
+    const bindingDisplay = document.getElementById('binding-log-display');
+    const savingDisplay = document.getElementById('saving-log-display');
+
+    if ((data.bindingLog && data.bindingLog.length > 0) || (data.savingLog && data.savingLog.length > 0)) {
+      flowSection.style.display = 'block';
+
+      if (data.bindingLog && data.bindingLog.length > 0) {
+        bindingDisplay.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--warning);margin-bottom:8px">← 参数引用（从缓存取值）</div>' +
+          data.bindingLog.map(b => `
+            <div class="flow-log-item" onclick="this.classList.toggle('expanded')">
+              <span class="arrow">←</span>
+              <span style="color:var(--warning)">${b.cacheKey}</span>
+              <span style="color:var(--gray-400)">→</span>
+              <span>${b.requestPath}</span>
+              <span class="tag tag-${b.status === '已替换' ? 'green' : 'red'}">${b.status}</span>
+              ${b.value !== null ? `<span style="color:var(--gray-400)">= <span class="value-text">${JSON.stringify(b.value)}</span></span>` : ''}
+            </div>
+          `).join('');
+      } else {
+        bindingDisplay.innerHTML = '';
+      }
+
+      if (data.savingLog && data.savingLog.length > 0) {
+        savingDisplay.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:8px">→ 响应保存（写入缓存）</div>' +
+          data.savingLog.map(s => `
+            <div class="flow-log-item" onclick="this.classList.toggle('expanded')">
+              <span class="arrow">→</span>
+              <span style="color:var(--gray-400)">${s.responsePath}</span>
+              <span style="color:var(--gray-400)">→</span>
+              <span style="color:var(--teal)">${s.cacheKey}</span>
+              <span class="tag tag-${s.status === '已保存' ? 'green' : 'red'}">${s.status}</span>
+              ${s.value !== null ? `<span style="color:var(--gray-400)">= <span class="value-text">${JSON.stringify(s.value)}</span></span>` : ''}
+            </div>
+          `).join('');
+      } else {
+        savingDisplay.innerHTML = '';
+      }
+    } else {
+      flowSection.style.display = 'none';
+    }
+  } else {
+    const methodClass = data.method === 'GET' ? 'blue' : data.method === 'POST' ? 'green' : data.method === 'PUT' ? 'orange' : 'red';
+
+    let failTag, failMsg;
+    if (isAssertionFail) {
+      failTag = '断言失败';
+      failMsg = '接口返回数据不满足断言条件';
+    } else if (data.statusCode === 0) {
+      failTag = '请求未到达 (HTTP 0)';
+      failMsg = '接口地址无法访问，请检查网络或环境配置';
+    } else {
+      failTag = '请求失败';
+      failMsg = data.message || data.msg || '';
+    }
+
+    document.getElementById('test-result-content').innerHTML = `
+      <div style="display:flex;gap:16px;align-items:center">
+        <span class="tag tag-red">${failTag}</span>
+        <span style="color:var(--gray-600)">${failMsg}</span>
+        ${data.responseTime ? `<span style="color:var(--gray-600)">响应时间: <strong style="color:var(--primary)">${data.responseTime}ms</strong></span>` : ''}
+      </div>
+    `;
+
+    const preApiSection = document.getElementById('pre-api-section');
+    const preApiInfo = document.getElementById('pre-api-info');
+    if (data.preApiResult) {
+      preApiSection.style.display = 'block';
+      const preResult = data.preApiResult;
+      const preStatus = preResult.status === 'success' ? 'green' : 'red';
+      const preStatusText = preResult.status === 'success' ? '执行成功' : '执行失败';
+      let preSavingLogHtml = '';
+      if (preResult.savingLog && preResult.savingLog.length > 0) {
+        preSavingLogHtml = `<div style="margin-top:8px">
+          <div style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:4px">→ 响应保存（写入缓存）</div>
+          ${preResult.savingLog.map(s => `
+            <div class="flow-log-item" onclick="this.classList.toggle('expanded')">
+              <span class="arrow">→</span>
+              <span style="color:var(--gray-400)">${s.responsePath}</span>
+              <span style="color:var(--gray-400)">→</span>
+              <span style="color:var(--teal)">${s.cacheKey}</span>
+              <span class="tag tag-${s.status === '已保存' ? 'green' : 'red'}">${s.status}</span>
+              ${s.value !== null ? `<span style="color:var(--gray-400)">= <span class="value-text">${JSON.stringify(s.value)}</span></span>` : ''}
+            </div>
+          `).join('')}
+        </div>`;
+      }
+      preApiInfo.innerHTML = `
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+          <span class="tag tag-${preStatus}" style="font-size:12px">${preStatusText}</span>
+          <span style="font-size:13px;font-weight:500;color:var(--gray-700)">${preResult.requestMethod || 'GET'} ${preResult.requestUrl || ''}</span>
+          ${preResult.responseTime ? `<span style="font-size:12px;color:var(--gray-400)">响应时间: ${preResult.responseTime}ms</span>` : ''}
+        </div>
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">响应内容</div>
+        <div class="json-editor" style="min-height:60px;font-size:12px;white-space:pre-wrap;word-break:break-all;overflow-x:hidden">${JSON.stringify(preResult.response, null, 2)}</div>
+        ${preSavingLogHtml}
+      `;
+    } else {
+      preApiSection.style.display = 'none';
+    }
+
+    const requestDisplay = document.getElementById('request-info-display');
+    requestDisplay.innerHTML = `
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">请求方式</div>
+        <span class="tag tag-${methodClass}" style="font-size:14px;font-weight:600">${data.method || 'POST'}</span>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">请求URL</div>
+        <code style="font-size:13px;color:var(--gray-900)">${data.url || ''}</code>
+      </div>
+      ${data.requestHeaders && Object.keys(data.requestHeaders).length > 0 ? `
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">请求头 (Headers)</div>
+        <div class="json-editor" style="min-height:60px;font-size:12px;white-space:pre-wrap;word-break:break-all;overflow-x:hidden">${JSON.stringify(data.requestHeaders, null, 2)}</div>
+      </div>
+      ` : ''}
+      ${data.requestParams && Object.keys(data.requestParams).length > 0 ? `
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">查询参数 (Params)</div>
+        <div class="json-editor" style="min-height:60px;font-size:12px;white-space:pre-wrap;word-break:break-all;overflow-x:hidden">${JSON.stringify(data.requestParams, null, 2)}</div>
+      </div>
+      ` : ''}
+      ${data.requestBody && Object.keys(data.requestBody).length > 0 ? `
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">请求体 (Body)</div>
+        <div class="json-editor" style="min-height:80px;font-size:12px;white-space:pre-wrap;word-break:break-all;overflow-x:hidden">${JSON.stringify(data.requestBody, null, 2)}</div>
+      </div>
+      ` : ''}
+    `;
+
+    const respText = (data.response !== undefined && data.response !== null) ? JSON.stringify(data.response, null, 2) : (data.message || data.msg || '无响应数据');
+    document.getElementById('test-result-response').textContent = respText;
+
+    const assertionSection = document.getElementById('assertion-section');
+    if (data.assertionResults && data.assertionResults.length > 0) {
+      assertionSection.style.display = 'block';
+      assertionSection.innerHTML = `
+        <div style="font-size:15px;font-weight:600;color:var(--primary);margin-bottom:8px">✅ 断言结果</div>
+        <div class="card" style="padding:12px">
+          ${data.assertionResults.map(a => `
+            <div class="flow-log-item" style="align-items:center">
+              <span class="tag tag-${a.passed ? 'green' : 'red'}" style="width:60px;text-align:center">${a.passed ? '通过' : '失败'}</span>
+              <span style="color:var(--gray-600)">${a.field === '_status_code' ? 'Status Code' : a.field}</span>
+              <span style="color:var(--gray-400)">${a.operator === 'eq' ? '==' : a.operator === 'ne' ? '!=' : a.operator === 'in' || a.operator === 'contains' ? '包含' : a.operator === 'greater_than' ? '>' : a.operator === 'less_than' ? '<' : a.operator}</span>
+              <span style="font-weight:500">${a.expected}</span>
+              <span style="color:var(--gray-400);margin-left:auto">实际: ${a.actual}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      assertionSection.style.display = 'none';
+    }
+
+    document.getElementById('flow-log-section').style.display = 'none';
+  }
+  showModal('test-result-modal');
+
+  if (data.success) await loadCache();
+}
+</script>
+</body>
+</html>

@@ -354,11 +354,6 @@ def cases():
     return render_template('cases.html')
 
 
-@app.route('/code')
-def code():
-    return render_template('code.html')
-
-
 @app.route('/api/apis/run-module/<module_id>', methods=['POST'])
 def run_module_apis(module_id):
     logger.info(f"开始执行模块接口: {module_id}")
@@ -859,6 +854,22 @@ def update_data_cache():
     return jsonify({"success": True})
 
 
+@app.route('/api/data-cache/refresh', methods=['POST'])
+def refresh_data_cache():
+    """强制刷新缓存，重新从文件读取data.json"""
+    try:
+        # 重新加载缓存数据
+        cache_data = {
+            "datas": cache_service.get_datas(),
+            "headers": cache_service.get_headers()
+        }
+        logger.info("缓存刷新成功")
+        return jsonify({"success": True, "data": cache_data})
+    except Exception as e:
+        logger.error(f"缓存刷新失败: {e}")
+        return jsonify({"success": False, "message": str(e)})
+
+
 @app.route('/api/data-cache/keys', methods=['GET'])
 def get_cache_keys():
     datas = cache_service.get_datas()
@@ -966,6 +977,14 @@ def preview_test_report(report_id):
     html_file = os.path.join(REPORTS_DIR, f'test_report_{report_id}.html')
     if os.path.exists(html_file):
         return send_file(html_file)
+    return jsonify({"success": False, "message": "报告不存在"}), 404
+
+
+@app.route('/api/locust/report/<report_name>')
+def preview_locust_report(report_name):
+    report_file = os.path.join(REPORTS_DIR, report_name)
+    if os.path.exists(report_file) and report_file.endswith('.html'):
+        return send_file(report_file)
     return jsonify({"success": False, "message": "报告不存在"}), 404
 
 
@@ -1099,57 +1118,6 @@ def update_case_module(module_id):
     return jsonify({"success": True, "module": module})
 
 
-@app.route('/api/code/generate', methods=['POST'])
-def generate_code():
-    data = request.get_json()
-    api_ids = data.get("apiIds", [])
-    
-    code_lines = [
-        "# coding=utf-8",
-        "\"\"\"",
-        "宝信 API 测试代码 - 自动生成",
-        f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-        "\"\"\"",
-        "",
-        "import unittest",
-        "import sys",
-        "sys.path.insert(0, '..')",
-        "",
-        "from utilss import *",
-        "",
-        "",
-        "class TestAPIs(unittest.TestCase):",
-        "    \"\"\"API测试用例\"\"\"",
-        "",
-        "    def setUp(self):",
-        "        \"\"\"测试前准备\"\"\"",
-        "        pass",
-        "",
-        "    def tearDown(self):",
-        "        \"\"\"测试后清理\"\"\"",
-        "        pass",
-        ""
-    ]
-    
-    apis = api_model.get_all()
-    for api_id in api_ids:
-        api = api_model.get_by_id(api_id)
-        if api:
-            func_name = api.get("funcName", f"test_{api['id']}")
-            code_lines.append(f"    def {func_name}(self):")
-            code_lines.append(f"        \"\"\"{api.get('name', '')}\"\"\"")
-            code_lines.append(f"        result = {func_name}()")
-            code_lines.append("        self.assertEqual(result['status'], 'success')")
-            code_lines.append("")
-    
-    code_lines.append("")
-    code_lines.append("if __name__ == '__main__':")
-    code_lines.append("    unittest.main()")
-    
-    code = "\n".join(code_lines)
-    return jsonify({"success": True, "code": code})
-
-
 from configs import config as env_config
 
 @app.route('/api/project/envs', methods=['GET'])
@@ -1183,6 +1151,706 @@ def delete_env(env_key):
     return jsonify({"success": True})
 
 
+_locust_process = None
+LOCUST_STATS_FILE = os.path.join(DATA_DIR, 'locust_stats.json')
+
+def load_locust_stats():
+    if os.path.exists(LOCUST_STATS_FILE):
+        try:
+            with open(LOCUST_STATS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {
+        "status": "idle",
+        "totalRequests": 0,
+        "successRate": "0%",
+        "avgResponseTime": 0,
+        "maxResponseTime": 0,
+        "currentUsers": 0,
+        "tps": 0,
+        "results": []
+    }
+
+def save_locust_stats(stats):
+    with open(LOCUST_STATS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(stats, f, ensure_ascii=False, indent=2)
+
+_locust_test_stats = load_locust_stats()
+
+
+@app.route('/locust')
+def locust_page():
+    return render_template('locust.html')
+
+
+@app.route('/api/locust/start', methods=['POST'])
+def start_locust_test():
+    global _locust_process, _locust_test_stats
+    
+    if _locust_process and _locust_process.poll() is None:
+        return jsonify({"success": False, "message": "已有测试正在运行"})
+    
+    data = request.get_json()
+    api_ids = data.get('apiIds', [])
+    user_count = data.get('userCount', 10)
+    spawn_rate = data.get('spawnRate', 2)
+    duration = data.get('duration', 60)
+    wait_time = data.get('waitTime', 1000)
+    
+    if not api_ids:
+        return jsonify({"success": False, "message": "请选择接口"})
+    
+    apis = load_json(APIS_FILE)
+    # apis.json 结构为 {"apis": [...]}
+    api_list = apis.get('apis', []) if isinstance(apis, dict) else apis
+    selected_apis = [a for a in api_list if a.get('id') in api_ids]
+    
+    if not selected_apis:
+        return jsonify({"success": False, "message": "未找到选中的接口"})
+    
+    locust_file = os.path.join(BASE_DIR, 'locustfile.py')
+    generate_locust_file(locust_file, selected_apis, wait_time)
+    
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    csv_output = os.path.join(REPORTS_DIR, f'locust_results_{timestamp}')
+    html_output = os.path.join(REPORTS_DIR, f'locust_report_{timestamp}.html')
+    
+    _locust_test_stats = {
+        "status": "running",
+        "totalRequests": 0,
+        "successRate": "0%",
+        "avgResponseTime": 0,
+        "maxResponseTime": 0,
+        "currentUsers": 0,
+        "tps": 0,
+        "results": [],
+        "startTime": time.time(),
+        "duration": duration,
+        "userCount": user_count,
+        "spawnRate": spawn_rate,
+        "htmlReportPath": html_output
+    }
+    save_locust_stats(_locust_test_stats)
+    
+    try:
+        import requests
+        
+        locust_port = 8089
+        cmd = [
+            'locust', '-f', locust_file,
+            '--host', env_config.get_host(),
+            '--web-port', str(locust_port),
+            '--csv', csv_output,
+            '--html', html_output
+        ]
+        
+        _locust_process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        
+        logger.info(f"Locust 测试启动: {cmd}")
+        
+        time.sleep(3)
+        
+        try:
+            # Locust 2.x 的 /swarm 接口只接受 form/query，不接受 JSON body
+            # 传递 run_time 参数使 Locust 在指定时长后自动停止测试
+            start_data = {
+                "user_count": user_count,
+                "spawn_rate": spawn_rate,
+                "host": env_config.get_host(),
+                "run_time": f"{duration}s"
+            }
+            resp = requests.post(
+                f'http://localhost:{locust_port}/swarm',
+                data=start_data,
+                timeout=5
+            )
+            if resp.status_code == 200:
+                try:
+                    resp_json = resp.json()
+                except Exception:
+                    resp_json = {}
+                if resp_json.get('success'):
+                    logger.info(f"Locust swarm 启动成功: {resp.text}")
+                else:
+                    logger.error(f"Locust swarm 启动失败: {resp.text}")
+                    _locust_process.terminate()
+                    _locust_process.wait()
+                    return jsonify({"success": False, "message": f"启动 swarm 失败: {resp.text}"})
+            else:
+                logger.error(f"Locust swarm 启动失败: {resp.text}")
+                _locust_process.terminate()
+                _locust_process.wait()
+                return jsonify({"success": False, "message": f"启动 swarm 失败: {resp.text}"})
+        except Exception as e:
+            logger.error(f"连接 Locust 失败: {str(e)}")
+            _locust_process.terminate()
+            _locust_process.wait()
+            return jsonify({"success": False, "message": f"连接 Locust 失败: {str(e)}"})
+        
+        def monitor_test():
+            global _locust_test_stats
+            start_time = time.time()
+            
+            while time.time() - start_time < duration + 30:
+                if _locust_process.poll() is not None:
+                    exit_code = _locust_process.returncode
+                    logger.info(f"Locust 进程已退出, 退出码: {exit_code}")
+                    break
+                time.sleep(1)
+            
+            _locust_test_stats = load_locust_stats()
+            _locust_test_stats["status"] = "completed"
+            _locust_test_stats["results"] = parse_locust_results(selected_apis)
+            save_locust_stats(_locust_test_stats)
+            
+            try:
+                requests.post(f'http://localhost:{locust_port}/stop', timeout=5)
+                time.sleep(5)
+            except:
+                pass
+            
+            if _locust_process.poll() is None:
+                try:
+                    _locust_process.terminate()
+                    _locust_process.wait()
+                except:
+                    pass
+        
+        import threading
+        threading.Thread(target=monitor_test, daemon=True).start()
+        
+        return jsonify({"success": True, "message": "测试已启动"})
+    
+    except Exception as e:
+        logger.error(f"启动 Locust 失败: {str(e)}")
+        return jsonify({"success": False, "message": f"启动失败: {str(e)}"})
+
+
+@app.route('/api/locust/stop', methods=['POST'])
+def stop_locust_test():
+    global _locust_process, _locust_test_stats
+    
+    final_locust_stats = []
+    
+    if _locust_process and _locust_process.poll() is None:
+        try:
+            import requests
+            resp = requests.get('http://localhost:8089/stats/requests', timeout=2)
+            if resp.status_code == 200:
+                final_locust_stats = resp.json().get("stats", [])
+                logger.info(f"获取最终统计数据: {len(final_locust_stats)} 条")
+        except Exception as e:
+            logger.error(f"获取最终统计数据失败: {str(e)}")
+        
+        try:
+            import requests
+            requests.post('http://localhost:8089/stop', timeout=2)
+            time.sleep(3)
+        except Exception as e:
+            logger.error(f"优雅停止失败，使用强制终止: {str(e)}")
+        
+        if _locust_process.poll() is None:
+            _locust_process.terminate()
+            _locust_process.wait()
+        
+        logger.info("Locust 测试已停止")
+    
+    _locust_test_stats = load_locust_stats()
+    results = parse_locust_results_from_api(final_locust_stats)
+    _locust_test_stats["status"] = "completed"
+    _locust_test_stats["results"] = results
+    _locust_test_stats["locustStats"] = []
+    
+    html_report_path = _locust_test_stats.get('htmlReportPath', '')
+    if html_report_path and os.path.exists(html_report_path):
+        report_file = html_report_path
+    else:
+        test_config = _locust_test_stats.get('config', {})
+        report_file = generate_locust_html_report(results, test_config)
+    
+    _locust_test_stats["reportFile"] = os.path.basename(report_file)
+    
+    save_locust_stats(_locust_test_stats)
+    return jsonify({"success": True, "reportFile": os.path.basename(report_file)})
+
+
+# Locust页面中文替换映射表
+LOCUST_TRANSLATIONS = {
+    'Host': '主机',
+    'Status': '状态',
+    'Users': '用户数',
+    'RPS': '请求/秒',
+    'Failures': '失败率',
+    'EDIT': '编辑',
+    'STOP': '停止',
+    'RESET': '重置',
+    'STATISTICS': '统计',
+    'CHARTS': '图表',
+    'FAILURES': '失败',
+    'EXCEPTIONS': '异常',
+    'CURRENT RATIO': '当前比例',
+    'DOWNLOAD DATA': '下载数据',
+    'LOGS': '日志',
+    'Type': '类型',
+    'Name': '名称',
+    '# Requests': '请求数',
+    '# Fails': '失败数',
+    'Median (ms)': '中位数(毫秒)',
+    '95%ile (ms)': '95%耗时(毫秒)',
+    '99%ile (ms)': '99%耗时(毫秒)',
+    'Average (ms)': '平均(毫秒)',
+    'Min (ms)': '最小(毫秒)',
+    'Max (ms)': '最大(毫秒)',
+    'Average size (bytes)': '平均大小(字节)',
+    'Current RPS': '当前请求/秒',
+    'Current Failures/s': '当前失败/秒',
+    'RUNNING': '运行中',
+    'Aggregated': '汇总',
+    'ABOUT': '关于',
+    'Total RPS': '总请求/秒',
+    'Total Failures/s': '总失败/秒'
+}
+
+def translate_locust_html(html_content):
+    """将Locust页面中的英文标签替换为中文"""
+    for en, zh in LOCUST_TRANSLATIONS.items():
+        html_content = html_content.replace(en, zh)
+    return html_content
+
+@app.route('/locust-proxy/<path:path>')
+def locust_proxy(path):
+    """代理Locust服务的所有请求，并对HTML页面进行中文替换"""
+    locust_url = f'http://localhost:8089/{path}'
+    try:
+        resp = requests.get(locust_url)
+        content_type = resp.headers.get('Content-Type', '')
+        
+        if 'text/html' in content_type:
+            # 对HTML页面进行中文替换
+            translated = translate_locust_html(resp.text)
+            return translated, resp.status_code, dict(resp.headers)
+        else:
+            # 其他资源直接返回
+            return resp.content, resp.status_code, dict(resp.headers)
+    except Exception as e:
+        logger.error(f'Locust代理请求失败: {e}')
+        return '', 503
+
+@app.route('/api/locust/stats', methods=['GET'])
+def get_locust_stats():
+    global _locust_test_stats, _locust_process
+    
+    _locust_test_stats = load_locust_stats()
+    
+    if _locust_test_stats["status"] == "running":
+        if _locust_process and _locust_process.poll() is not None:
+            _locust_test_stats["status"] = "completed"
+            logger.info(f"检测到 Locust 进程已退出，状态更新为 completed")
+            save_locust_stats(_locust_test_stats)
+            return jsonify({"success": True, "stats": _locust_test_stats})
+        
+        try:
+            import requests
+            locust_port = 8089
+            
+            resp = requests.get(f'http://localhost:{locust_port}/stats/requests', timeout=2)
+            if resp.status_code == 200:
+                locust_data = resp.json()
+                
+                _locust_test_stats["status"] = locust_data.get("state", "running")
+                if _locust_test_stats["status"] == "stopped":
+                    _locust_test_stats["status"] = "completed"
+                    logger.info(f"Locust 测试已停止，状态更新为 completed")
+                    save_locust_stats(_locust_test_stats)
+                
+                return jsonify({"success": True, "stats": _locust_test_stats})
+        except Exception as e:
+            logger.error(f"获取 Locust 状态异常: {str(e)}")
+        
+        elapsed = time.time() - _locust_test_stats.get("startTime", 0)
+        duration = _locust_test_stats.get("duration", 60)
+        
+        if elapsed >= duration and _locust_test_stats["status"] != "completed":
+            _locust_test_stats["status"] = "completed"
+            logger.info(f"测试超时，状态更新为 completed")
+            save_locust_stats(_locust_test_stats)
+    
+    return jsonify({"success": True, "stats": _locust_test_stats})
+
+
+def generate_locust_file(filepath, apis, wait_time_ms):
+    wait_time = wait_time_ms / 1000
+
+    # 加载 data.json 中的全局 headers 和 datas，用于合并到请求中并替换变量占位符
+    project_data = load_json(PROJECT_DATA_FILE)
+    global_headers = project_data.get("headers", {})
+    global_datas = project_data.get("datas", {})
+
+    def _resolve_placeholders_in_obj(obj):
+        """递归替换对象中的 {{变量}} 占位符，使用 data.json 中的 datas 数据。"""
+        if isinstance(obj, str):
+            result = obj
+            for key, value in global_datas.items():
+                placeholder = f"{{{{{key}}}}}"
+                if placeholder in result:
+                    result = result.replace(placeholder, str(value))
+            return result
+        elif isinstance(obj, dict):
+            return {k: _resolve_placeholders_in_obj(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [_resolve_placeholders_in_obj(item) for item in obj]
+        else:
+            return obj
+
+    def _py_literal(value):
+        """把 Python 对象转成 locustfile 可直接 exec 的字面量字符串。
+
+        json.dumps 默认输出 true/false（小写），但 Python 用 True/False。
+        这里用 repr 序列化，能正确处理 dict/list/str/int/float/bool/None。
+        """
+        if isinstance(value, bool):
+            return 'True' if value else 'False'
+        if value is None:
+            return 'None'
+        if isinstance(value, (dict, list, tuple)):
+            return repr(value)
+        return json.dumps(value, ensure_ascii=False)
+
+    code = f'''# coding=utf-8
+from locust import HttpUser, task, constant
+import json
+
+class ApiUser(HttpUser):
+    wait_time = constant({wait_time})
+
+    def on_start(self):
+        pass
+'''
+
+    for api in apis:
+        api_name = api['name'].replace(' ', '_').replace('-', '_')
+        method = api['method'].lower()
+        url = _py_literal(api['url'])
+
+        merged_headers = {**global_headers, **api.get('headers', {})}
+        headers = _py_literal(merged_headers)
+
+        params = _py_literal(api.get('params', {}))
+
+        raw_body = api.get('body', {})
+        resolved_body = _resolve_placeholders_in_obj(raw_body)
+        body = _py_literal(resolved_body)
+
+        code += f'''
+    @task
+    def test_{api_name}(self):
+        url = {url}
+        headers = {headers}
+        params = {params}
+        # 使用接口名称作为Locust统计显示名称，便于识别
+        request_name = {_py_literal(api['name'])}
+
+        try:
+            if {json.dumps(method)} == "get":
+                self.client.get(url, headers=headers, params=params, name=request_name)
+            elif {json.dumps(method)} == "post":
+                body = {body}
+                self.client.post(url, headers=headers, json=body, name=request_name)
+            elif {json.dumps(method)} == "put":
+                body = {body}
+                self.client.put(url, headers=headers, json=body, name=request_name)
+            elif {json.dumps(method)} == "delete":
+                self.client.delete(url, headers=headers, params=params, name=request_name)
+        except Exception as e:
+            pass
+'''
+
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(code)
+
+
+def parse_locust_results(apis):
+    results = []
+    csv_file = os.path.join(REPORTS_DIR, 'locust_results_stats.csv')
+
+    api_list = []
+    if apis:
+        api_list = apis.get('apis', []) if isinstance(apis, dict) else apis
+    else:
+        apis_data = load_json(APIS_FILE)
+        api_list = apis_data.get('apis', []) if isinstance(apis_data, dict) else apis_data
+
+    if os.path.exists(csv_file):
+        try:
+            with open(csv_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get('Name') == 'Aggregated':
+                        continue
+                    try:
+                        api_name = row['Name']
+                        
+                        matched_api = None
+                        for api in api_list:
+                            api_url = api.get('url', '')
+                            if api_url and (api_name == api_url or api_name.endswith(api_url) or api_url in api_name):
+                                matched_api = api
+                                break
+                        
+                        if matched_api:
+                            api_name = matched_api.get('name', api_name)
+                        
+                        results.append({
+                            'apiName': api_name,
+                            'requests': int(row.get('# requests', 0) or 0),
+                            'successRate': row.get('Success Rate', '0%'),
+                            'avgResponseTime': int(float(row.get('Average Response Time', 0) or 0)),
+                            'minResponseTime': int(float(row.get('Min Response Time', 0) or 0)),
+                            'maxResponseTime': int(float(row.get('Max Response Time', 0) or 0))
+                        })
+                    except (ValueError, KeyError):
+                        continue
+        except Exception as e:
+            logger.error(f"解析 Locust 结果失败: {str(e)}")
+    
+    for api in apis:
+        api_name = f'test_{api["name"].replace(" ", "_").replace("-", "_")}'
+        exists = any(r['apiName'] == api_name for r in results)
+        if not exists:
+            results.append({
+                'apiName': api['name'],
+                'requests': 0,
+                'successRate': '0%',
+                'avgResponseTime': 0,
+                'minResponseTime': 0,
+                'maxResponseTime': 0
+            })
+    
+    return results
+
+
+def parse_locust_results_from_api(locust_stats):
+    results = []
+    
+    apis_data = load_json(APIS_FILE)
+    api_list = apis_data.get('apis', []) if isinstance(apis_data, dict) else apis_data
+    
+    for stat in locust_stats:
+        stat_name = stat.get('name', '')
+        if stat_name == 'Aggregated':
+            continue
+        
+        matched_api = None
+        for api in api_list:
+            api_url = api.get('url', '')
+            if api_url and (stat_name == api_url or stat_name.endswith(api_url) or api_url in stat_name):
+                matched_api = api
+                break
+        
+        api_name = matched_api.get('name', stat_name) if matched_api else stat_name
+        
+        num_requests = stat.get('num_requests', 0)
+        num_failures = stat.get('num_failures', 0)
+        success_rate = f"{int((num_requests - num_failures) / num_requests * 100)}%" if num_requests > 0 else "0%"
+        
+        p95_key = 'response_time_percentile_0.95'
+        p95_alt_key = 'response_time_percentile_95'
+        p95 = stat[p95_key] if p95_key in stat else (stat[p95_alt_key] if p95_alt_key in stat else 0)
+        
+        p99_key = 'response_time_percentile_0.99'
+        p99_alt_key = 'response_time_percentile_99'
+        p99 = stat[p99_key] if p99_key in stat else (stat[p99_alt_key] if p99_alt_key in stat else 0)
+        
+        results.append({
+            'apiName': api_name,
+            'requests': num_requests,
+            'failures': num_failures,
+            'successRate': success_rate,
+            'medianResponseTime': int(stat.get('median_response_time', 0)),
+            'p95ResponseTime': int(p95),
+            'p99ResponseTime': int(p99),
+            'avgResponseTime': int(stat.get('avg_response_time', 0)),
+            'minResponseTime': int(stat.get('min_response_time', 0)),
+            'maxResponseTime': int(stat.get('max_response_time', 0)),
+            'tps': stat.get('current_rps', 0)
+        })
+    
+    return results
+
+
+def generate_locust_html_report(results, test_config):
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    report_file = os.path.join(REPORTS_DIR, f'locust_report_{timestamp}.html')
+    
+    total_requests = sum(r['requests'] for r in results)
+    total_failures = sum(r['failures'] for r in results)
+    success_count = sum(1 for r in results if r['failures'] == 0)
+    avg_tps = sum(r['tps'] for r in results) / len(results) if results else 0
+    avg_response = sum(r['avgResponseTime'] for r in results) / len(results) if results else 0
+    max_response = max(r['maxResponseTime'] for r in results) if results else 0
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>性能测试报告 - {timestamp}</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; padding: 20px; }}
+        .report {{ max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden; }}
+        .header {{ background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 24px 32px; }}
+        .header h1 {{ font-size: 24px; font-weight: 600; }}
+        .header p {{ margin-top: 8px; opacity: 0.9; }}
+        .config {{ padding: 16px 32px; background: #f0fdf4; border-bottom: 1px solid #dcfce7; font-size: 14px; color: #065f46; }}
+        .config span {{ margin-right: 24px; }}
+        .stats {{ display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; padding: 24px 32px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }}
+        .stat {{ background: white; padding: 16px; border-radius: 8px; text-align: center; }}
+        .stat .label {{ font-size: 12px; color: #64748b; margin-bottom: 4px; }}
+        .stat .value {{ font-size: 24px; font-weight: 700; }}
+        .stat.success .value {{ color: #22c55e; }}
+        .stat.error .value {{ color: #ef4444; }}
+        .stat.total .value {{ color: #6366f1; }}
+        .stat.tps .value {{ color: #f59e0b; }}
+        .stat.time .value {{ color: #3b82f6; }}
+        .chart {{ padding: 24px 32px; }}
+        .chart-title {{ font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 16px; }}
+        .pie-chart {{ width: 200px; height: 200px; border-radius: 50%; background: conic-gradient(#22c55e {100 - (total_failures/total_requests*100 if total_requests>0 else 0)}%, #ef4444 {total_failures/total_requests*100 if total_requests>0 else 0}%); position: relative; margin: 0 auto; }}
+        .pie-center {{ position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 120px; height: 120px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; }}
+        .pie-center .percent {{ font-size: 28px; font-weight: 700; color: #1e293b; }}
+        .pie-center .text {{ font-size: 12px; color: #64748b; }}
+        .legend {{ display: flex; justify-content: center; gap: 32px; margin-top: 24px; }}
+        .legend-item {{ display: flex; align-items: center; gap: 8px; }}
+        .legend-color {{ width: 16px; height: 16px; border-radius: 4px; }}
+        .legend-color.success {{ background: #22c55e; }}
+        .legend-color.error {{ background: #ef4444; }}
+        .results {{ padding: 24px 32px; }}
+        .results-title {{ font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 16px; }}
+        table {{ width: 100%; border-collapse: collapse; }}
+        th, td {{ padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; }}
+        th {{ background: #f8fafc; font-weight: 600; color: #64748b; font-size: 13px; }}
+        td {{ font-size: 14px; color: #334155; }}
+        .failures {{ color: #ef4444; font-weight: 500; }}
+        .success {{ color: #22c55e; font-weight: 500; }}
+        .footer {{ padding: 16px 32px; background: #f8fafc; text-align: center; font-size: 12px; color: #94a3b8; }}
+        .summary-row {{ background: #f8fafc; font-weight: 600; }}
+    </style>
+</head>
+<body>
+    <div class="report">
+        <div class="header">
+            <h1>性能测试报告</h1>
+            <p>生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </div>
+        <div class="config">
+            <span><strong>并发用户数:</strong> {test_config.get('users', '-')}</span>
+            <span><strong>每秒新增用户:</strong> {test_config.get('spawnRate', '-')}</span>
+            <span><strong>测试时长:</strong> {test_config.get('duration', '-')}秒</span>
+            <span><strong>请求间隔:</strong> {test_config.get('requestInterval', '-')}毫秒</span>
+        </div>
+        <div class="stats">
+            <div class="stat total">
+                <div class="label">总请求数</div>
+                <div class="value">{total_requests}</div>
+            </div>
+            <div class="stat error">
+                <div class="label">失败数</div>
+                <div class="value">{total_failures}</div>
+            </div>
+            <div class="stat success">
+                <div class="label">成功率</div>
+                <div class="value">{100 - round(total_failures/total_requests*100, 2) if total_requests>0 else 100}%</div>
+            </div>
+            <div class="stat tps">
+                <div class="label">平均TPS</div>
+                <div class="value">{round(avg_tps, 2)}</div>
+            </div>
+            <div class="stat time">
+                <div class="label">平均响应(ms)</div>
+                <div class="value">{round(avg_response)}</div>
+            </div>
+            <div class="stat time">
+                <div class="label">最大响应(ms)</div>
+                <div class="value">{max_response}</div>
+            </div>
+        </div>
+        <div class="results">
+            <div class="results-title">接口性能统计</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>接口名称</th>
+                        <th>请求数</th>
+                        <th>失败数</th>
+                        <th>成功率</th>
+                        <th>中位数(ms)</th>
+                        <th>95%(ms)</th>
+                        <th>99%(ms)</th>
+                        <th>平均(ms)</th>
+                        <th>最小(ms)</th>
+                        <th>最大(ms)</th>
+                        <th>TPS</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+    for result in results:
+        failures_class = 'failures' if result['failures'] > 0 else 'success'
+        html_content += f"""
+                    <tr>
+                        <td><strong>{result['apiName']}</strong></td>
+                        <td>{result['requests']}</td>
+                        <td class="{failures_class}">{result['failures']}</td>
+                        <td>{result['successRate']}</td>
+                        <td>{result['medianResponseTime']}</td>
+                        <td>{result['p95ResponseTime']}</td>
+                        <td>{result['p99ResponseTime']}</td>
+                        <td>{result['avgResponseTime']}</td>
+                        <td>{result['minResponseTime']}</td>
+                        <td>{result['maxResponseTime']}</td>
+                        <td>{round(result['tps'], 2)}</td>
+                    </tr>
+"""
+
+    html_content += f"""
+                    <tr class="summary-row">
+                        <td>汇总</td>
+                        <td>{total_requests}</td>
+                        <td class="{('failures' if total_failures > 0 else 'success')}">{total_failures}</td>
+                        <td>{100 - round(total_failures/total_requests*100, 2) if total_requests>0 else 100}%</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>{round(avg_response)}</td>
+                        <td>-</td>
+                        <td>{max_response}</td>
+                        <td>{round(avg_tps, 2)}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="footer">
+            宝信API测试管理平台 - 性能测试报告
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    with open(report_file, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    return report_file
+
+
 if __name__ == '__main__':
     logger.info("宝信API测试管理平台启动")
-    app.run(debug=True, host='0.0.0.0', port=8888)
+    # 关闭 reloader，避免生成 locustfile.py 触发 Flask 主进程重启导致子进程孤儿化
+    app.run(debug=True, host='0.0.0.0', port=8889, use_reloader=False)
